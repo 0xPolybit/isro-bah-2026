@@ -119,12 +119,21 @@ h1, h2, h3 {
   flex-direction: column;
   min-width: 0;
   min-height: 0;           /* critical: lets the card shrink to its grid cell */
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;        /* each section scrolls independently */
   transition: border-color 0.25s var(--ease);
   animation: rise 0.5s var(--ease) both;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 .card:hover { border-color: #444; }
+
+/* Thin, design-matched scrollbars */
+.card::-webkit-scrollbar { width: 8px; height: 8px; }
+.card::-webkit-scrollbar-track { background: transparent; }
+.card::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--surface); }
+.card::-webkit-scrollbar-thumb:hover { background: #555; }
 
 .span-3 { grid-column: span 3; }
 .span-4 { grid-column: span 4; }
@@ -132,7 +141,29 @@ h1, h2, h3 {
 .span-6 { grid-column: span 6; }
 .span-7 { grid-column: span 7; }
 
-.card-head { flex: 0 0 auto; margin-bottom: 8px; }
+.card-head { flex: 0 0 auto; margin-bottom: 8px; position: relative; padding-right: 28px; }
+
+/* Per-section help button (top-right of each card) */
+.help-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.help-btn:hover { color: var(--accent); border-color: var(--accent); }
+.help-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
 .card-head h2 {
   font-size: 13px;
@@ -155,7 +186,7 @@ h1, h2, h3 {
 .chart-wrap {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 150px;       /* keeps charts legible; card scrolls if cell is short */
 }
 .chart-wrap canvas { position: absolute; inset: 0; }
 
@@ -180,7 +211,7 @@ h1, h2, h3 {
 /* ---------- Pipeline diagram ---------- */
 .pipeline {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 140px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -283,7 +314,7 @@ h1, h2, h3 {
 .mini-chart-wrap {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 130px;
   margin-top: 2px;
   display: flex;
   flex-direction: column;
@@ -309,7 +340,7 @@ h1, h2, h3 {
   min-height: 0;
 }
 /* Bounded-height wrapper stops the Chart.js resize feedback loop. */
-.spark-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.spark-wrap { position: relative; flex: 1 1 auto; min-height: 56px; }
 .spark-wrap canvas { position: absolute; inset: 0; }
 .examples figcaption {
   flex: 0 0 auto;
@@ -347,6 +378,69 @@ h1, h2, h3 {
   color: var(--text-muted);
   letter-spacing: 0.04em;
 }
+
+/* ---------- Help modal ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s var(--ease), visibility 0.2s var(--ease);
+}
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  padding: 22px 24px;
+  transform: translateY(8px);
+  transition: transform 0.2s var(--ease);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-title {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  margin: 0 28px 12px 0;
+  text-transform: uppercase;
+}
+
+.modal-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.modal-close:hover { color: var(--accent); border-color: var(--accent); }
 
 /* ---------- Motion ---------- */
 @keyframes pulse {

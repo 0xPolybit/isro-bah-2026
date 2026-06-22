@@ -29,7 +29,7 @@
 
   <main class="grid">
     <!-- 1. NOISY LIGHT CURVE -->
-    <section class="card span-5">
+    <section class="card span-5" data-help="Raw, uncorrected flux measurements from the detector plotted against time. Each white point is a single brightness sample. Grey diamonds mark statistical outliers, and blue points highlight the suspected transit-like dip. This is the pipeline's input — dominated by detector noise and contamination from blended foreground/background sources in crowded fields.">
       <div class="card-head">
         <h2><span class="idx">1.</span> Noisy Light Curve</h2>
         <p class="sub">Raw flux measurements over time</p>
@@ -43,7 +43,7 @@
     </section>
 
     <!-- 2. AI PIPELINE -->
-    <section class="card span-7">
+    <section class="card span-7" data-help="The end-to-end detection model. The noisy light curve is fed to a denoising autoencoder, discriminative features are extracted, and a classifier estimates the probability that a transit is present (0.97 here). The dashed path is the training feedback loop used to optimise the network weights.">
       <div class="card-head">
         <h2><span class="idx">2.</span> AI Pipeline</h2>
         <p class="sub">Deep learning model for denoising and transit detection</p>
@@ -90,7 +90,7 @@
     </section>
 
     <!-- 3. DENOISED LIGHT CURVE -->
-    <section class="card span-4">
+    <section class="card span-4" data-help="The autoencoder's reconstruction of the input light curve. Random detector noise and blending contamination are suppressed while the coherent astrophysical signal — the periodic brightness dip — is preserved, making the transit far easier to identify and measure.">
       <div class="card-head">
         <h2><span class="idx">3.</span> Model Denoised Light Curve</h2>
         <p class="sub">Noise reduced, signal preserved</p>
@@ -99,7 +99,7 @@
     </section>
 
     <!-- 4. TRANSIT PROBABILITY -->
-    <section class="card span-4">
+    <section class="card span-4" data-help="The classifier's per-epoch confidence that a transit is occurring at each point in time. The dashed line is the detection threshold; sustained excursions above it flag candidate transit events for further vetting.">
       <div class="card-head">
         <h2><span class="idx">4.</span> Transit Probability Over Time</h2>
         <p class="sub">AI-estimated probability of transit at each time point</p>
@@ -112,7 +112,7 @@
     </section>
 
     <!-- 5. DETECTION RESULT -->
-    <section class="card span-4">
+    <section class="card span-4" data-help="Summary of the recovered exoplanet candidate: detection confidence, orbital period, transit depth, transit duration and signal-to-noise ratio. The phase-folded light curve overlays every orbit onto a single transit window, with the best-fit transit model drawn in accent blue.">
       <div class="card-head">
         <h2><span class="idx">5.</span> Detection Result</h2>
         <p class="sub">Identified exoplanet candidate</p>
@@ -134,7 +134,7 @@
     </section>
 
     <!-- TRAINING DATA EXAMPLES -->
-    <section class="card span-6">
+    <section class="card span-6" data-help="Representative signal classes the model is trained to distinguish: genuine planetary transits, eclipsing binaries, starspot variability and blended sources. Learning these distinct signatures lets the network disentangle true transits from look-alikes in noisy, crowded fields.">
       <div class="card-head">
         <h2>Training Data Examples</h2>
         <p class="sub">AI model trained on diverse simulated and real light curves</p>
@@ -148,7 +148,7 @@
     </section>
 
     <!-- KEY FEATURES -->
-    <section class="card span-3">
+    <section class="card span-3" data-help="A summary of the pipeline's core capabilities and the specific data-quality problems it is designed to handle.">
       <div class="card-head"><h2>Key Features</h2></div>
       <ul class="feature-list">
         <li><span class="bullet">▹</span> Denoising autoencoder for crowded-field contamination</li>
@@ -160,7 +160,7 @@
     </section>
 
     <!-- APPLICATIONS -->
-    <section class="card span-3">
+    <section class="card span-3" data-help="Domains and survey workflows where this detection pipeline can be applied, from large photometric surveys to follow-up target selection and false-positive rejection.">
       <div class="card-head"><h2>Applications</h2></div>
       <ul class="feature-list">
         <li><span class="bullet">▹</span> TESS &amp; Kepler survey light curves</li>
@@ -177,8 +177,18 @@
     <span class="meta">Front-end prototype · synthetic data shown for design demonstration</span>
   </footer>
 
+  <!-- Help modal -->
+  <div class="modal-overlay" id="helpModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+      <button class="modal-close" id="helpModalClose" aria-label="Close">✕</button>
+      <h3 class="modal-title" id="helpModalTitle"></h3>
+      <p class="modal-body" id="helpModalBody"></p>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="{{ url_for('static', filename='js/data.js') }}"></script>
   <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/help.js') }}"></script>
 </body>
 </html>
