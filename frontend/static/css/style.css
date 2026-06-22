@@ -1,0 +1,380 @@
+:root {
+  /* Accent */
+  --accent: #00e8f7;
+  --accent-dim: rgba(0, 232, 247, 0.18);
+
+  /* Greyscale */
+  --bg:         #0a0a0a;
+  --surface:    #161616;
+  --surface-2:  #222222;
+  --border:     #333333;
+  --text-muted: #888888;
+  --text:       #e0e0e0;
+
+  --font-heading: 'Bitcount Prop Single', monospace;
+  --font-body: 'Ubuntu', sans-serif;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0; /* no border radius — ever */
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* single page, no scroll */
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Page is a fixed-height column: header / grid (fills) / footer */
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+
+.brand-mark { font-size: 22px; color: var(--accent); line-height: 1; }
+
+.brand-title {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  color: var(--text);
+  letter-spacing: 0.08em;
+}
+
+.brand-sub {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.status-pill .dot {
+  width: 7px; height: 7px;
+  background: var(--accent);
+  display: inline-block;
+  animation: pulse 2.4s var(--ease) infinite;
+}
+
+.meta { font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; }
+
+/* ---------- Grid (fills remaining viewport height) ---------- */
+.grid {
+  flex: 1 1 auto;
+  min-height: 0;            /* allow children to shrink, prevents overflow */
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: 1.05fr 1fr 0.95fr;
+  gap: 12px;
+  padding: 12px 22px;
+  overflow: hidden;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;           /* critical: lets the card shrink to its grid cell */
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease);
+  animation: rise 0.5s var(--ease) both;
+}
+
+.card:hover { border-color: #444; }
+
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-5 { grid-column: span 5; }
+.span-6 { grid-column: span 6; }
+.span-7 { grid-column: span 7; }
+
+.card-head { flex: 0 0 auto; margin-bottom: 8px; }
+
+.card-head h2 {
+  font-size: 13px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.card-head h2 .idx { color: var(--text-muted); margin-right: 4px; }
+
+.card-head .sub {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- Charts ---------- */
+/* Parent height comes from flex layout, never from the canvas itself,
+   so Chart.js (maintainAspectRatio:false) cannot drive an infinite resize. */
+.chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.chart-wrap canvas { position: absolute; inset: 0; }
+
+.legend {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.swatch { width: 9px; height: 9px; display: inline-block; }
+.sw-data { background: var(--text); }
+.sw-outlier { background: var(--text-muted); }
+.sw-dip { background: var(--accent); }
+.sw-accent { background: var(--accent); }
+.sw-thresh { background: var(--text-muted); height: 2px; }
+
+/* ---------- Pipeline diagram ---------- */
+.pipeline {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  position: relative;
+  padding: 6px 4px 28px;
+}
+
+.stage { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+
+.node {
+  width: 100%;
+  max-width: 92px;
+  height: 62px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.stage:hover .node { border-color: var(--accent); transform: translateY(-2px); }
+
+.node-mini { color: var(--text); font-size: 19px; }
+.node-mini.ae { color: var(--accent); letter-spacing: -4px; font-size: 24px; }
+
+.node-mini.bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 24px; }
+.node-mini.bars i { width: 5px; background: var(--accent); display: block; }
+.node-mini.bars i:nth-child(1) { height: 9px; }
+.node-mini.bars i:nth-child(2) { height: 20px; }
+.node-mini.bars i:nth-child(3) { height: 13px; }
+.node-mini.bars i:nth-child(4) { height: 24px; }
+
+.node-mini.net { display: inline-flex; gap: 8px; }
+.node-mini.net i {
+  width: 8px; height: 8px; background: var(--accent);
+  align-self: center; box-shadow: 0 13px 0 var(--text), 0 -13px 0 var(--text);
+}
+
+.node-out { border-color: var(--accent); }
+.prob { font-family: var(--font-heading); font-size: 22px; color: var(--accent); }
+
+.node-label { text-align: center; line-height: 1.25; }
+.node-label strong { display: block; font-size: 11px; color: var(--text); font-weight: 500; }
+.node-label span { font-size: 10px; color: var(--text-muted); }
+.node-label span.ok { color: var(--accent); }
+
+.arrow { color: var(--text-muted); align-self: center; font-size: 15px; }
+
+.feedback {
+  position: absolute;
+  left: 12%; right: 12%;
+  bottom: 4px;
+  border-bottom: 1px dashed var(--border);
+  height: 20px;
+}
+.feedback span {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  padding: 0 8px;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Detection result ---------- */
+.result { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+
+.result-verdict {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  padding: 6px 11px;
+}
+.result-verdict .check { font-weight: 700; }
+
+.result-stats { flex: 0 0 auto; list-style: none; margin: 0; padding: 0; }
+.result-stats li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.result-stats li:last-child { border-bottom: 0; }
+.result-stats li span { color: var(--text-muted); }
+.result-stats li b { font-weight: 500; color: var(--text); }
+.result-stats li b.accent { color: var(--accent); }
+
+.mini-chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+}
+.mini-title { flex: 0 0 auto; font-size: 10px; color: var(--text-muted); }
+.mini-chart-wrap canvas { position: absolute; left: 0; right: 0; bottom: 0; top: 16px; }
+
+/* ---------- Examples ---------- */
+.examples {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.examples figure {
+  margin: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* Bounded-height wrapper stops the Chart.js resize feedback loop. */
+.spark-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.spark-wrap canvas { position: absolute; inset: 0; }
+.examples figcaption {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Feature lists ---------- */
+.feature-list { flex: 1 1 auto; min-height: 0; list-style: none; margin: 0; padding: 0; overflow: hidden; }
+.feature-list li {
+  display: flex;
+  gap: 9px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.feature-list li:last-child { border-bottom: 0; }
+.feature-list .bullet { color: var(--accent); flex-shrink: 0; }
+
+/* ---------- Footer ---------- */
+.footbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Motion ---------- */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Small screens: allow scroll rather than crushing content ---------- */
+@media (max-width: 1100px), (max-height: 620px) {
+  html, body { overflow: auto; }
+  .grid {
+    overflow: visible;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(220px, auto);
+  }
+  .span-5, .span-7, .span-4, .span-6 { grid-column: span 12; }
+  .span-3 { grid-column: span 6; }
+}
+@media (max-width: 720px) {
+  .span-3 { grid-column: span 12; }
+  .examples { grid-template-columns: repeat(2, 1fr); }
+  .topbar { flex-direction: column; gap: 10px; align-items: flex-start; }
+}

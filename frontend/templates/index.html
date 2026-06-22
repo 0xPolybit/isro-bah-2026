@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISRO BAH 2026 — Exoplanet Transit Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single&family=Ubuntu:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">◇</span>
+      <div class="brand-text">
+        <h1 class="brand-title">ISRO BAH 2026</h1>
+        <p class="brand-sub">AI Exoplanet Transit Detection Pipeline</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill"><span class="dot"></span> PIPELINE ACTIVE</span>
+      <span class="meta">TIC&nbsp;ID&nbsp;2026-BAH&nbsp;·&nbsp;Sector&nbsp;47</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- 1. NOISY LIGHT CURVE -->
+    <section class="card span-5">
+      <div class="card-head">
+        <h2><span class="idx">1.</span> Noisy Light Curve</h2>
+        <p class="sub">Raw flux measurements over time</p>
+      </div>
+      <div class="chart-wrap"><canvas id="noisyChart"></canvas></div>
+      <div class="legend">
+        <span><i class="swatch sw-data"></i>Measurements</span>
+        <span><i class="swatch sw-outlier"></i>Outliers</span>
+        <span><i class="swatch sw-dip"></i>Transit-like dip</span>
+      </div>
+    </section>
+
+    <!-- 2. AI PIPELINE -->
+    <section class="card span-7">
+      <div class="card-head">
+        <h2><span class="idx">2.</span> AI Pipeline</h2>
+        <p class="sub">Deep learning model for denoising and transit detection</p>
+      </div>
+      <div class="pipeline">
+        <div class="stage">
+          <div class="node">
+            <span class="node-mini">∿</span>
+          </div>
+          <div class="node-label"><strong>Input</strong><span>Noisy Light Curve</span></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage">
+          <div class="node">
+            <span class="node-mini ae">&#9698;&#9699;</span>
+          </div>
+          <div class="node-label"><strong>Denoising</strong><span>Autoencoder</span></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage">
+          <div class="node">
+            <span class="node-mini bars"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="node-label"><strong>Feature</strong><span>Extraction</span></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage">
+          <div class="node">
+            <span class="node-mini net"><i></i><i></i><i></i></span>
+          </div>
+          <div class="node-label"><strong>Transit Detection</strong><span>Classifier</span></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage">
+          <div class="node node-out">
+            <span class="prob">0.97</span>
+          </div>
+          <div class="node-label"><strong>Output</strong><span class="ok">Transit Detected</span></div>
+        </div>
+        <div class="feedback">
+          <span>Training feedback loop</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. DENOISED LIGHT CURVE -->
+    <section class="card span-4">
+      <div class="card-head">
+        <h2><span class="idx">3.</span> Model Denoised Light Curve</h2>
+        <p class="sub">Noise reduced, signal preserved</p>
+      </div>
+      <div class="chart-wrap"><canvas id="denoisedChart"></canvas></div>
+    </section>
+
+    <!-- 4. TRANSIT PROBABILITY -->
+    <section class="card span-4">
+      <div class="card-head">
+        <h2><span class="idx">4.</span> Transit Probability Over Time</h2>
+        <p class="sub">AI-estimated probability of transit at each time point</p>
+      </div>
+      <div class="chart-wrap"><canvas id="probChart"></canvas></div>
+      <div class="legend">
+        <span><i class="swatch sw-accent"></i>Probability</span>
+        <span><i class="swatch sw-thresh"></i>Detection Threshold</span>
+      </div>
+    </section>
+
+    <!-- 5. DETECTION RESULT -->
+    <section class="card span-4">
+      <div class="card-head">
+        <h2><span class="idx">5.</span> Detection Result</h2>
+        <p class="sub">Identified exoplanet candidate</p>
+      </div>
+      <div class="result">
+        <div class="result-verdict"><span class="check">✓</span> Transit Detected</div>
+        <ul class="result-stats">
+          <li><span>Confidence</span><b class="accent">0.97</b></li>
+          <li><span>Period</span><b>10.02 days</b></li>
+          <li><span>Depth</span><b>1.21%</b></li>
+          <li><span>Duration</span><b>2.71 hours</b></li>
+          <li><span>SNR</span><b>12.4</b></li>
+        </ul>
+        <div class="mini-chart-wrap">
+          <span class="mini-title">Phase-folded Light Curve</span>
+          <canvas id="phaseChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRAINING DATA EXAMPLES -->
+    <section class="card span-6">
+      <div class="card-head">
+        <h2>Training Data Examples</h2>
+        <p class="sub">AI model trained on diverse simulated and real light curves</p>
+      </div>
+      <div class="examples">
+        <figure><div class="spark-wrap"><canvas class="spark" data-kind="transit"></canvas></div><figcaption>Planetary Transit</figcaption></figure>
+        <figure><div class="spark-wrap"><canvas class="spark" data-kind="eclipse"></canvas></div><figcaption>Eclipsing Binary</figcaption></figure>
+        <figure><div class="spark-wrap"><canvas class="spark" data-kind="spot"></canvas></div><figcaption>Starspot Variability</figcaption></figure>
+        <figure><div class="spark-wrap"><canvas class="spark" data-kind="blend"></canvas></div><figcaption>Blended Source</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- KEY FEATURES -->
+    <section class="card span-3">
+      <div class="card-head"><h2>Key Features</h2></div>
+      <ul class="feature-list">
+        <li><span class="bullet">▹</span> Denoising autoencoder for crowded-field contamination</li>
+        <li><span class="bullet">▹</span> Disentangles transits, binaries &amp; starspots</li>
+        <li><span class="bullet">▹</span> Per-epoch transit probability scoring</li>
+        <li><span class="bullet">▹</span> Robust to detector-response noise</li>
+        <li><span class="bullet">▹</span> Phase-folding &amp; candidate vetting</li>
+      </ul>
+    </section>
+
+    <!-- APPLICATIONS -->
+    <section class="card span-3">
+      <div class="card-head"><h2>Applications</h2></div>
+      <ul class="feature-list">
+        <li><span class="bullet">▹</span> TESS &amp; Kepler survey light curves</li>
+        <li><span class="bullet">▹</span> Crowded galactic-plane fields</li>
+        <li><span class="bullet">▹</span> Exoplanet candidate prioritisation</li>
+        <li><span class="bullet">▹</span> Follow-up target selection</li>
+        <li><span class="bullet">▹</span> False-positive rejection</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footbar">
+    <span>ISRO Bharatiya Antariksh Hackathon 2026</span>
+    <span class="meta">Front-end prototype · synthetic data shown for design demonstration</span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/data.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+</body>
+</html>
