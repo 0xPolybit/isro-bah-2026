@@ -121,10 +121,10 @@
         <div class="result-verdict" id="verdict"><span class="check" id="verdictIcon">✓</span> <span id="verdictText">Transit Detected</span></div>
         <ul class="result-stats">
           <li><span>Confidence</span><b class="accent" id="statConfidence">0.97</b></li>
-          <li><span>Period</span><b>10.02 days</b></li>
-          <li><span>Depth</span><b>1.21%</b></li>
-          <li><span>Duration</span><b>2.71 hours</b></li>
-          <li><span>SNR</span><b>12.4</b></li>
+          <li><span>Period</span><b id="statPeriod">10.02 days</b></li>
+          <li><span>Depth</span><b id="statDepth">1.21%</b></li>
+          <li><span>Duration</span><b id="statDuration">2.71 hours</b></li>
+          <li><span>SNR</span><b id="statSnr">12.4</b></li>
         </ul>
 
         <!-- ResNet18 classifier output -->
@@ -137,16 +137,50 @@
             <div class="prob-row"><span class="prob-name">Planetary Transit</span><span class="prob-track"><i style="width:97%"></i></span><span class="prob-val">0.97</span></div>
             <div class="prob-row"><span class="prob-name">Noise / No Transit</span><span class="prob-track"><i style="width:3%"></i></span><span class="prob-val">0.03</span></div>
           </div>
-          <label class="upload-btn" id="uploadBtn">
-            <input type="file" id="lcUpload" accept="image/*" hidden />
-            <span id="uploadLabel">Analyze Light-Curve Image</span>
-          </label>
-          <p class="upload-hint" id="uploadHint">Upload a phase-folded light curve (white background) to run the model.</p>
+        </div>
+
+        <!-- Input controls: three ways to feed the model -->
+        <div class="analyze">
+          <div class="analyze-tabs" role="tablist">
+            <button class="analyze-tab active" data-mode="image" type="button">Image</button>
+            <button class="analyze-tab" data-mode="csv" type="button">CSV</button>
+            <button class="analyze-tab" data-mode="tic" type="button">TIC ID</button>
+          </div>
+
+          <!-- Image mode -->
+          <div class="analyze-pane active" data-pane="image">
+            <label class="run-btn" id="imageBtn">
+              <input type="file" id="lcImage" accept="image/*" hidden />
+              <span id="imageLabel">Upload Phase-folded Image</span>
+            </label>
+            <p class="analyze-hint">A rendered phase-folded light curve (black scatter on white) — what the model takes directly.</p>
+          </div>
+
+          <!-- CSV mode -->
+          <div class="analyze-pane" data-pane="csv" hidden>
+            <label class="run-btn" id="csvBtn">
+              <input type="file" id="lcCsv" accept=".csv,text/csv" hidden />
+              <span id="csvLabel">Upload Light-curve CSV</span>
+            </label>
+            <p class="analyze-hint">Columns <code>time</code>, <code>flux</code>. The server folds, renders &amp; classifies, then repopulates every panel.</p>
+          </div>
+
+          <!-- TIC mode -->
+          <div class="analyze-pane" data-pane="tic" hidden>
+            <div class="tic-row">
+              <input type="text" id="ticInput" class="tic-input" placeholder="e.g. 25155310" inputmode="numeric" />
+              <button class="run-btn tic-go" id="ticBtn" type="button">Run</button>
+            </div>
+            <p class="analyze-hint">Downloads the TESS (SPOC) light curve from NASA MAST — requires an internet connection.</p>
+          </div>
+
+          <p class="analyze-status" id="analyzeStatus"></p>
         </div>
 
         <div class="mini-chart-wrap">
           <span class="mini-title">Phase-folded Light Curve</span>
           <canvas id="phaseChart"></canvas>
+          <img id="foldImage" class="fold-image" alt="Model input image" hidden />
         </div>
       </div>
     </section>
@@ -204,7 +238,10 @@
     </div>
   </div>
 
-  <script>window.MODEL_STATUS = {{ model_status | tojson }};</script>
+  <script>
+    window.MODEL_STATUS = {{ model_status | tojson }};
+    window.PIPELINE_AVAILABLE = {{ pipeline_available | tojson }};
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="{{ url_for('static', filename='js/data.js') }}"></script>
   <script src="{{ url_for('static', filename='js/charts.js') }}"></script>

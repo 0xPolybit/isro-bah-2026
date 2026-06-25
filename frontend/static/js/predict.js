@@ -1,90 +1,182 @@
 /*
- * Wires the Detection Result panel to the live TESSNet ResNet18 model.
- * The user uploads a phase-folded light-curve image; it is POSTed to /predict
- * and the classifier output (verdict, confidence, per-class probabilities)
- * replaces the demo values.
+ * Drives the three input modes in the Detection Result panel and pushes the
+ * results back onto the dashboard:
+ *   - Image: upload a phase-folded PNG -> /predict (classification only).
+ *   - CSV:   upload time/flux data    -> /analyze/csv (full pipeline).
+ *   - TIC:   enter a TESS TIC ID       -> /analyze/tic (full pipeline).
+ * CSV and TIC repopulate every panel via window.Dashboard.applySeries().
  */
 (function () {
   const status = window.MODEL_STATUS || { ready: false };
-  const input = document.getElementById('lcUpload');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const uploadLabel = document.getElementById('uploadLabel');
-  const hint = document.getElementById('uploadHint');
-  const verdict = document.getElementById('verdict');
-  const verdictText = document.getElementById('verdictText');
-  const verdictIcon = document.getElementById('verdictIcon');
-  const statConfidence = document.getElementById('statConfidence');
-  const probBars = document.getElementById('probBars');
-  const classifierSrc = document.getElementById('classifierSrc');
+  const pipelineOK = !!window.PIPELINE_AVAILABLE;
 
-  // If torch/the checkpoint failed to load, disable the control and explain.
-  if (!status.ready) {
-    uploadBtn.classList.add('disabled');
-    input.disabled = true;
-    hint.textContent =
-      'Model unavailable: ' + (status.error || 'unknown error') +
-      '. Install requirements and restart to enable inference.';
-    return;
+  const $ = (id) => document.getElementById(id);
+  const verdict = $('verdict');
+  const verdictText = $('verdictText');
+  const verdictIcon = $('verdictIcon');
+  const probBars = $('probBars');
+  const classifierSrc = $('classifierSrc');
+  const statConfidence = $('statConfidence');
+  const statPeriod = $('statPeriod');
+  const statDepth = $('statDepth');
+  const statDuration = $('statDuration');
+  const statSnr = $('statSnr');
+  const foldImage = $('foldImage');
+  const phaseCanvas = $('phaseChart');
+  const statusEl = $('analyzeStatus');
+
+  // ---- Tab switching ----
+  const tabs = document.querySelectorAll('.analyze-tab');
+  const panes = document.querySelectorAll('.analyze-pane');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      tabs.forEach((t) => t.classList.toggle('active', t === tab));
+      panes.forEach((p) => {
+        const on = p.dataset.pane === mode;
+        p.classList.toggle('active', on);
+        p.hidden = !on;
+      });
+      setStatus('');
+    });
+  });
+
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'analyze-status' + (kind ? ' ' + kind : '');
   }
 
+  // ---- Shared result rendering ----
   function renderBars(probabilities) {
-    // Highest probability first.
     const rows = probabilities.slice().sort((a, b) => b.p - a.p);
     probBars.innerHTML = '';
     rows.forEach((row) => {
       const el = document.createElement('div');
       el.className = 'prob-row';
-      const pct = Math.round(row.p * 100);
       el.innerHTML =
         '<span class="prob-name"></span>' +
         '<span class="prob-track"><i></i></span>' +
         '<span class="prob-val"></span>';
       el.querySelector('.prob-name').textContent = row.label;
       el.querySelector('.prob-val').textContent = row.p.toFixed(2);
-      // Animate width on next frame for a subtle transition.
       const bar = el.querySelector('.prob-track i');
-      requestAnimationFrame(() => { bar.style.width = pct + '%'; });
+      requestAnimationFrame(() => { bar.style.width = Math.round(row.p * 100) + '%'; });
       probBars.appendChild(el);
     });
   }
 
-  function applyResult(res) {
-    verdictText.textContent = res.transit_detected
-      ? 'Transit Detected'
-      : res.predicted_label;
-    verdictIcon.textContent = res.transit_detected ? '✓' : '✕';
-    verdict.classList.toggle('negative', !res.transit_detected);
-    statConfidence.textContent = res.confidence.toFixed(2);
-    renderBars(res.probabilities);
-    classifierSrc.textContent = 'uploaded image';
+  function applyClassification(cls, sourceLabel) {
+    if (!cls || cls.ok === false) {
+      setStatus('Classification failed: ' + ((cls && cls.error) || 'unknown'), 'error');
+      return;
+    }
+    verdictText.textContent = cls.transit_detected ? 'Transit Detected' : cls.predicted_label;
+    verdictIcon.textContent = cls.transit_detected ? '✓' : '✕';
+    verdict.classList.toggle('negative', !cls.transit_detected);
+    statConfidence.textContent = cls.confidence.toFixed(2);
+    renderBars(cls.probabilities);
+    classifierSrc.textContent = sourceLabel;
     classifierSrc.classList.add('live');
   }
 
-  input.addEventListener('change', function () {
-    const file = input.files && input.files[0];
-    if (!file) return;
+  function applyParams(p) {
+    statPeriod.textContent = p.period_days + ' days';
+    statDepth.textContent = p.depth_pct + '%';
+    statDuration.textContent = p.duration_hours + ' hours';
+    statSnr.textContent = String(p.snr);
+  }
 
-    uploadLabel.textContent = 'Analyzing…';
-    uploadBtn.classList.add('busy');
-    hint.textContent = file.name;
+  function showFoldImage(dataUrl) {
+    foldImage.src = dataUrl;
+    foldImage.hidden = false;
+    phaseCanvas.style.visibility = 'hidden';
+  }
+  function hideFoldImage() {
+    foldImage.hidden = true;
+    phaseCanvas.style.visibility = 'visible';
+  }
 
-    const form = new FormData();
-    form.append('image', file);
+  // ---- POST helper ----
+  function post(url, body) {
+    return fetch(url, { method: 'POST', body: body }).then((r) => r.json());
+  }
 
-    fetch('/predict', { method: 'POST', body: form })
-      .then((r) => r.json())
-      .then((res) => {
-        if (!res.ok) throw new Error(res.error || 'Prediction failed');
-        applyResult(res);
-        uploadLabel.textContent = 'Analyze Another Image';
-      })
-      .catch((err) => {
-        hint.textContent = 'Error: ' + err.message;
-        uploadLabel.textContent = 'Analyze Light-Curve Image';
-      })
-      .finally(() => {
-        uploadBtn.classList.remove('busy');
-        input.value = '';
-      });
-  });
+  // ---- Image mode (classification only) ----
+  if (status.ready) {
+    const imageInput = $('lcImage');
+    const imageLabel = $('imageLabel');
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files && imageInput.files[0];
+      if (!file) return;
+      imageLabel.textContent = 'Analyzing…';
+      setStatus(file.name);
+      const form = new FormData();
+      form.append('image', file);
+      post('/predict', form)
+        .then((res) => {
+          if (!res.ok) throw new Error(res.error || 'Prediction failed');
+          applyClassification(res, 'uploaded image');
+          showFoldImage(URL.createObjectURL(file));
+          setStatus('Classified uploaded image.', 'ok');
+        })
+        .catch((err) => setStatus('Error: ' + err.message, 'error'))
+        .finally(() => { imageLabel.textContent = 'Upload Phase-folded Image'; imageInput.value = ''; });
+    });
+  } else {
+    $('imageBtn').classList.add('disabled');
+    $('lcImage').disabled = true;
+    setStatus('Model unavailable: ' + (status.error || 'unknown'), 'error');
+  }
+
+  // ---- Full-pipeline result handler (CSV + TIC) ----
+  function handlePipeline(res, sourceLabel) {
+    if (!res.ok) throw new Error(res.error || 'Analysis failed');
+    if (res.series && window.Dashboard) window.Dashboard.applySeries(res.series);
+    if (res.params) applyParams(res.params);
+    if (res.image) showFoldImage(res.image);
+    applyClassification(res.classification, sourceLabel);
+    setStatus('Analyzed ' + res.n_points + ' cadences.', 'ok');
+  }
+
+  // ---- CSV + TIC modes (require the scientific pipeline) ----
+  if (pipelineOK) {
+    const csvInput = $('lcCsv');
+    const csvLabel = $('csvLabel');
+    csvInput.addEventListener('change', () => {
+      const file = csvInput.files && csvInput.files[0];
+      if (!file) return;
+      csvLabel.textContent = 'Analyzing…';
+      setStatus('Processing ' + file.name + ' (folding + BLS)…');
+      const form = new FormData();
+      form.append('file', file);
+      post('/analyze/csv', form)
+        .then((res) => handlePipeline(res, 'CSV: ' + file.name))
+        .catch((err) => setStatus('Error: ' + err.message, 'error'))
+        .finally(() => { csvLabel.textContent = 'Upload Light-curve CSV'; csvInput.value = ''; });
+    });
+
+    const ticInput = $('ticInput');
+    const ticBtn = $('ticBtn');
+    const runTic = () => {
+      const id = ticInput.value.trim();
+      if (!id) { setStatus('Enter a TIC ID.', 'error'); return; }
+      ticBtn.textContent = '…';
+      ticBtn.disabled = true;
+      setStatus('Downloading TIC ' + id + ' from MAST…');
+      const form = new FormData();
+      form.append('tic_id', id);
+      post('/analyze/tic', form)
+        .then((res) => handlePipeline(res, 'TIC ' + id))
+        .catch((err) => setStatus('Error: ' + err.message, 'error'))
+        .finally(() => { ticBtn.textContent = 'Run'; ticBtn.disabled = false; });
+    };
+    ticBtn.addEventListener('click', runTic);
+    ticInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runTic(); });
+  } else {
+    ['csvBtn', 'ticBtn'].forEach((id) => { const el = $(id); if (el) el.classList.add('disabled'); });
+    document.querySelectorAll('[data-pane="csv"] .analyze-hint, [data-pane="tic"] .analyze-hint')
+      .forEach((el) => { el.textContent = 'Install lightkurve + matplotlib and restart to enable this mode.'; });
+    const csv = $('lcCsv'); if (csv) csv.disabled = true;
+    const tic = $('ticInput'); if (tic) tic.disabled = true;
+  }
 })();

@@ -1,7 +1,13 @@
 Flask
 Pillow
+
 # Inference dependencies for the TESSNet ResNet18 model.
 # For a CPU-only install, use the PyTorch CPU wheels:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
+
+# Full light-curve analysis pipeline (CSV + TIC ID input modes).
+# These are optional: the image-upload mode works without them.
+lightkurve
+matplotlib

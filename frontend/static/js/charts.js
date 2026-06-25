@@ -46,7 +46,7 @@
     .map((t, i) => ({ x: t, y: LC.noisy[i], dip: t > 18.2 && t < 21.8 }))
     .filter((p) => p.dip);
 
-  new Chart(document.getElementById('noisyChart'), {
+  const noisyChart = new Chart(document.getElementById('noisyChart'), {
     type: 'scatter',
     data: {
       datasets: [
@@ -72,7 +72,7 @@
   });
 
   // 3. Denoised light curve — clean line.
-  new Chart(document.getElementById('denoisedChart'), {
+  const denoisedChart = new Chart(document.getElementById('denoisedChart'), {
     type: 'line',
     data: {
       datasets: [
@@ -90,7 +90,7 @@
   });
 
   // 4. Transit probability over time + threshold line.
-  new Chart(document.getElementById('probChart'), {
+  const probChart = new Chart(document.getElementById('probChart'), {
     type: 'line',
     data: {
       datasets: [
@@ -115,7 +115,7 @@
   });
 
   // 5. Phase-folded light curve — data points + model fit.
-  new Chart(document.getElementById('phaseChart'), {
+  const phaseChart = new Chart(document.getElementById('phaseChart'), {
     type: 'scatter',
     data: {
       datasets: [
@@ -162,4 +162,42 @@
       },
     });
   });
+
+  // ---- Public API: let real-data analyses repopulate the main panels. ----
+  function autoY(scale) { scale.min = undefined; scale.max = undefined; }
+
+  window.Dashboard = {
+    // `series` = { raw, denoised, probability, folded } as [{x,y}] arrays.
+    applySeries: function (series) {
+      if (series.raw) {
+        noisyChart.data.datasets[0].data = series.raw;
+        noisyChart.data.datasets[1].data = [];  // outliers
+        noisyChart.data.datasets[2].data = [];  // highlighted dip
+        autoY(noisyChart.options.scales.y);
+        noisyChart.update();
+      }
+      if (series.denoised) {
+        denoisedChart.data.datasets[0].data = series.denoised;
+        autoY(denoisedChart.options.scales.y);
+        denoisedChart.update();
+      }
+      if (series.probability && series.probability.length) {
+        const xs = series.probability.map((p) => p.x);
+        const x0 = Math.min.apply(null, xs);
+        const x1 = Math.max.apply(null, xs);
+        probChart.data.datasets[0].data = series.probability;
+        probChart.data.datasets[1].data = [
+          { x: x0, y: LC.threshold }, { x: x1, y: LC.threshold },
+        ];
+        probChart.update();
+      }
+      if (series.folded) {
+        phaseChart.data.datasets[0].data = series.folded;
+        phaseChart.data.datasets[0].backgroundColor = '#888888';
+        phaseChart.data.datasets[1].data = [];  // no analytic fit for real data
+        autoY(phaseChart.options.scales.y);
+        phaseChart.update();
+      }
+    },
+  };
 })();

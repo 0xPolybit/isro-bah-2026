@@ -353,11 +353,36 @@ h1, h2, h3 {
 }
 .prob-val { flex: 0 0 30px; text-align: right; color: var(--text-muted); }
 
-.upload-btn {
+/* ---------- Analyze input (Image / CSV / TIC) ---------- */
+.analyze { flex: 0 0 auto; }
+
+.analyze-tabs { display: flex; gap: 0; margin-bottom: 8px; }
+.analyze-tab {
+  flex: 1 1 0;
+  padding: 6px 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-right-width: 0;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.analyze-tab:last-child { border-right-width: 1px; }
+.analyze-tab:hover { color: var(--text); }
+.analyze-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+.analyze-pane { display: none; }
+.analyze-pane.active { display: block; }
+
+.run-btn {
   display: block;
-  margin-top: 10px;
+  width: 100%;
   padding: 8px 10px;
   text-align: center;
+  font-family: var(--font-body);
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--accent);
@@ -366,16 +391,47 @@ h1, h2, h3 {
   cursor: pointer;
   transition: background 0.2s var(--ease), color 0.2s var(--ease);
 }
-.upload-btn:hover { background: var(--accent-dim); }
-.upload-btn.busy { color: var(--text-muted); border-color: var(--border); cursor: progress; }
-.upload-btn.disabled { color: var(--text-muted); border-color: var(--border); cursor: not-allowed; }
+.run-btn:hover { background: var(--accent-dim); }
+.run-btn.disabled { color: var(--text-muted); border-color: var(--border); cursor: not-allowed; pointer-events: none; }
 
-.upload-hint {
+.tic-row { display: flex; gap: 0; }
+.tic-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-right-width: 0;
+}
+.tic-input::placeholder { color: var(--text-muted); }
+.tic-input:focus { outline: none; border-color: var(--accent); }
+.tic-go { flex: 0 0 56px; width: auto; }
+
+.analyze-hint {
   margin: 7px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.analyze-hint code {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--surface-2);
+  padding: 0 4px;
+}
+
+.analyze-status {
+  margin: 8px 0 0;
+  min-height: 13px;
   font-size: 10px;
   line-height: 1.4;
   color: var(--text-muted);
 }
+.analyze-status.ok { color: var(--accent); }
+.analyze-status.error { color: #d98a8a; }
 
 .result-verdict.negative {
   color: var(--text-muted);
@@ -393,6 +449,20 @@ h1, h2, h3 {
 }
 .mini-title { flex: 0 0 auto; font-size: 10px; color: var(--text-muted); }
 .mini-chart-wrap canvas { position: absolute; left: 0; right: 0; bottom: 0; top: 16px; }
+
+/* The model-input image overlays the phase chart area when real data is run. */
+.fold-image {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: calc(100% - 16px);
+  width: auto;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  background: #fff;
+}
 
 /* ---------- Examples ---------- */
 .examples {
