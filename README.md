@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/assets/icon.png" alt="ISRO BAH 2026 logo" width="110" />
+
 # ISRO BAH 2026
 ### AI Exoplanet Transit Detection Pipeline
 
@@ -25,9 +27,10 @@ An AI-based pipeline and dashboard for **automatically detecting exoplanet trans
 | | |
 |---|---|
 | 📊 **Interactive Dashboard** | Visualises the full detection workflow across five panels: raw light curve, AI pipeline diagram, denoised signal, transit probability over time, and a phase-folded detection summary. |
-| 🤖 **Live Model Inference** | Upload a phase-folded light-curve image and the trained ResNet18 classifier returns a verdict, confidence score, and per-class probability bars — updated in real time. |
-| ❓ **Per-panel Help** | Every section has a `?` button that opens a contextual explanation of the data being displayed. |
-| 🎨 **Design System** | Single-screen dark layout, sharp corners, greyscale + electric blue (`#00e8f7`), subtle animations. Documented in [`DESIGN.md`](DESIGN.md). |
+| 🔭 **Three Input Modes** | Feed the model a phase-folded **image**, a `time,flux` **CSV**, or a TESS **TIC ID**. CSV/TIC run the full pipeline server-side and repopulate *every* panel from the real data. |
+| 🤖 **Live Model Inference** | The trained ResNet18 classifier returns a verdict, confidence score, and per-class probability bars — updated in real time. |
+| 🔍 **Help & Detail Views** | Every section has a `?` explainer and a fullscreen ⤢ expand that opens an in-depth reference panel (and a detailed pipeline flowchart). |
+| 🎨 **Design System** | Single-screen dark layout, sharp corners, greyscale + electric blue (`#00e8f7`), subtle animations, and an icon splash/loading screen. Documented in [`DESIGN.md`](DESIGN.md). |
 
 ---
 
@@ -35,10 +38,10 @@ An AI-based pipeline and dashboard for **automatically detecting exoplanet trans
 
 | Layer | Technology |
 |---|---|
-| **Backend** | [Python](https://www.python.org/) · [Flask](https://flask.palletsprojects.com/) |
+| **Backend** | [Python](https://www.python.org/) · [Flask](https://flask.palletsprojects.com/) · [gunicorn](https://gunicorn.org/) (production) |
 | **ML / Inference** | [PyTorch](https://pytorch.org/) · [torchvision](https://pytorch.org/vision/) (ResNet18) · [Pillow](https://python-pillow.org/) |
 | **Frontend** | HTML · CSS · Vanilla JavaScript · [Chart.js](https://www.chartjs.org/) |
-| **Model Training** | [Lightkurve](https://docs.lightkurve.org/) · [Astroquery](https://astroquery.readthedocs.io/) · NumPy |
+| **Analysis & Training** | [Lightkurve](https://docs.lightkurve.org/) · [Astroquery](https://astroquery.readthedocs.io/) · [matplotlib](https://matplotlib.org/) · NumPy |
 | **Fonts** | [Bitcount Prop Single](https://fonts.google.com/) (headings) · [Ubuntu](https://fonts.google.com/specimen/Ubuntu) (body) |
 
 ---
@@ -71,6 +74,7 @@ isro-bah-2026/
 ├── DESIGN.md                    # Visual & interaction design principles
 ├── LICENSE                      # GNU GPL v3
 ├── README.md
+├── render.yaml                  # Render deployment blueprint
 │
 ├── model/
 │   ├── tessnet.ipynb            # Data preparation + ResNet18 training
@@ -84,6 +88,9 @@ isro-bah-2026/
     ├── requirements.txt
     ├── tess_resnet18_model.pth  # Trained ResNet18 weights (~45 MB)
     │
+    ├── assets/
+    │   └── icon.png             # App icon (favicon + loading splash)
+    │
     ├── templates/
     │   └── index.html           # Main dashboard template
     │
@@ -93,8 +100,10 @@ isro-bah-2026/
         └── js/
             ├── data.js          # Synthetic demo light-curve generator
             ├── charts.js        # Chart.js rendering + live-update API
-            ├── help.js          # Per-panel help modal
-            └── predict.js       # Image / CSV / TIC inputs → live results
+            ├── help.js          # Help modal + fullscreen detail dialog
+            ├── details.js       # Extended per-section reference content
+            ├── predict.js       # Image / CSV / TIC inputs → live results
+            └── loader.js        # Splash / loading overlay
 ```
 
 ---
@@ -120,7 +129,9 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-**PyTorch CPU-only install** (if the default wheel fails for your platform):
+`requirements.txt` already pins the **CPU-only** PyTorch wheels (via the PyTorch
+CPU index) to keep the install small. If you need a different build, install torch
+and torchvision manually, e.g.:
 
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
@@ -149,9 +160,18 @@ gunicorn -c gunicorn.conf.py app:app   # serves on 0.0.0.0:8000
 ```
 
 The config uses 2 workers and a 120 s timeout (BLS period search and MAST
-downloads are slow) and forces matplotlib's headless `Agg` backend. Tune via
-`WEB_CONCURRENCY`, `GUNICORN_TIMEOUT`, and `GUNICORN_BIND`. *(gunicorn does not
-run on native Windows — use the dev server or `waitress` there.)*
+downloads are slow), binds to `$PORT`, and forces matplotlib's headless `Agg`
+backend. Tune via `WEB_CONCURRENCY`, `GUNICORN_TIMEOUT`, and `GUNICORN_BIND`.
+*(gunicorn does not run on native Windows — use the dev server or `waitress` there.)*
+
+### Deploying to Render
+
+The repo ships a [`render.yaml`](render.yaml) blueprint (root dir `frontend/`,
+start command `gunicorn -c gunicorn.conf.py app:app`). The index route is kept
+lightweight — the model and analysis libraries load lazily on first use, not on
+page load — so the worker boots fast. The full ML stack (torch + lightkurve +
+matplotlib) needs more RAM than the free tier, so the blueprint requests the
+**Standard** plan.
 
 ### Running an analysis
 
