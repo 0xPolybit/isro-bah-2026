@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ISRO BAH 2026 — Exoplanet Transit Detection</title>
+  <link rel="icon" type="image/png" href="{{ url_for('assets', filename='icon.png') }}" />
+  <link rel="apple-touch-icon" href="{{ url_for('assets', filename='icon.png') }}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -13,6 +15,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
+  <!-- Full-screen loading overlay (fades in, then out once the page is ready) -->
+  <div id="loader" role="status" aria-label="Loading">
+    <div class="loader-inner">
+      <img src="{{ url_for('assets', filename='icon.png') }}" alt="" />
+      <div class="loader-bar"><span></span></div>
+    </div>
+  </div>
+
   <header class="topbar">
     <div class="topbar-left">
       <span class="brand-mark">◇</span>
@@ -255,6 +265,7 @@
     </div>
   </div>
 
+  <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
   <script>
     window.MODEL_STATUS = {{ model_status | tojson }};
     window.PIPELINE_AVAILABLE = {{ pipeline_available | tojson }};

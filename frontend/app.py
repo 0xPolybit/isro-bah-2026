@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+import os
+
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 import model_service
 import pipeline
@@ -7,6 +9,14 @@ app = Flask(__name__)
 
 # Cap uploads at 32 MB — light-curve CSVs and PNGs are well under this.
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
+
+@app.route("/assets/<path:filename>")
+def assets(filename):
+    """Serve static brand assets (icon, etc.) from the assets/ folder."""
+    return send_from_directory(ASSETS_DIR, filename)
 
 
 @app.route("/")
