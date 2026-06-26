@@ -79,6 +79,8 @@ isro-bah-2026/
 └── frontend/
     ├── app.py                   # Flask application & API routes
     ├── model_service.py         # Model loading, lazy init & inference
+    ├── pipeline.py              # CSV/TIC → clean → BLS → fold → render → classify
+    ├── gunicorn.conf.py         # Production WSGI server config
     ├── requirements.txt
     ├── tess_resnet18_model.pth  # Trained ResNet18 weights (~45 MB)
     │
@@ -90,9 +92,9 @@ isro-bah-2026/
         │   └── style.css        # Full design-system stylesheet
         └── js/
             ├── data.js          # Synthetic demo light-curve generator
-            ├── charts.js        # Chart.js chart rendering
+            ├── charts.js        # Chart.js rendering + live-update API
             ├── help.js          # Per-panel help modal
-            └── predict.js       # Upload → /predict → live results
+            └── predict.js       # Image / CSV / TIC inputs → live results
 ```
 
 ---
@@ -128,7 +130,9 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 ## Usage
 
-Start the development server from the `frontend/` directory:
+### Development server
+
+Start the Flask dev server from the `frontend/` directory:
 
 ```bash
 python app.py
@@ -136,20 +140,39 @@ python app.py
 
 Open **[http://127.0.0.1:5000](http://127.0.0.1:5000)** in your browser.
 
-The dashboard loads with a synthetic demo light curve so all panels are pre-populated. To run the real classifier:
+### Production (gunicorn)
 
-1. Navigate to the **Detection Result** panel (panel 5).
-2. Click **Analyze Light-Curve Image**.
-3. Upload a phase-folded light-curve PNG (black scatter, white background, any size).
-4. The ResNet18 model classifies the image and updates the verdict, confidence, and probability bars live.
+On Linux/Unix, serve the app with the bundled gunicorn config:
+
+```bash
+gunicorn -c gunicorn.conf.py app:app   # serves on 0.0.0.0:8000
+```
+
+The config uses 2 workers and a 120 s timeout (BLS period search and MAST
+downloads are slow) and forces matplotlib's headless `Agg` backend. Tune via
+`WEB_CONCURRENCY`, `GUNICORN_TIMEOUT`, and `GUNICORN_BIND`. *(gunicorn does not
+run on native Windows — use the dev server or `waitress` there.)*
+
+### Running an analysis
+
+The dashboard loads with a synthetic demo light curve so all panels are
+pre-populated. In the **Detection Result** panel, pick one of three input modes:
+
+| Mode | Input | What happens |
+|------|-------|--------------|
+| **Image** | A phase-folded light-curve PNG (black scatter, white background) | Classified directly by ResNet18; updates the verdict, confidence and probability bars. |
+| **CSV** | A `time,flux` CSV | Server flattens → BLS period search → phase-folds → renders the model image → classifies, then **repopulates every panel** from the real data. |
+| **TIC ID** | A TESS TIC ID (e.g. `25155310`) | Downloads the SPOC light curve from NASA MAST and runs the full pipeline. Requires internet access. |
 
 ### REST API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Serves the dashboard. |
-| `GET` | `/api/model-status` | Returns model readiness and class labels as JSON. |
-| `POST` | `/predict` | Accepts a multipart `image` upload, returns a JSON classification result. |
+| `GET`  | `/` | Serves the dashboard. |
+| `GET`  | `/api/model-status` | Returns model readiness and class labels as JSON. |
+| `POST` | `/predict` | Multipart `image` upload → JSON classification result. |
+| `POST` | `/analyze/csv` | Multipart `file` (time/flux CSV) → full pipeline result (params, classification, image, series). |
+| `POST` | `/analyze/tic` | Form field `tic_id` → downloads from MAST and runs the full pipeline. |
 
 #### Example `/predict` response
 

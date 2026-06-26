@@ -1,6 +1,11 @@
 Flask
 Pillow
 
+# Production WSGI server (Linux/Unix). Run with:
+#   gunicorn -c gunicorn.conf.py app:app
+# On Windows, gunicorn does not run; use `python app.py` or `waitress`.
+gunicorn
+
 # Inference dependencies for the TESSNet ResNet18 model.
 # For a CPU-only install, use the PyTorch CPU wheels:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
@@ -8,6 +13,10 @@ torch
 torchvision
 
 # Full light-curve analysis pipeline (CSV + TIC ID input modes).
-# These are optional: the image-upload mode works without them.
+# Optional: the image-upload mode works without these.
+# matplotlib runs fully headless here — the app forces the non-GUI "Agg"
+# backend (see pipeline.py), so no display/GUI toolkit is required and there is
+# no separate "headless" wheel to install. None of the other dependencies
+# (Pillow, torch, torchvision, lightkurve) ship a distinct headless variant.
 lightkurve
 matplotlib
