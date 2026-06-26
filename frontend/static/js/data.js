@@ -39,7 +39,6 @@
 
   const time = [];
   const noisy = [];
-  const clean = [];
   const denoised = [];
   const outliers = [];
   const prob = [];
@@ -51,7 +50,6 @@
     const value = base + gauss() * 0.006;
 
     time.push(t);
-    clean.push(base);
 
     // Occasional outliers far from the trend.
     const isOutlier = rand() < 0.03;

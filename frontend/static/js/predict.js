@@ -37,6 +37,7 @@
         p.classList.toggle('active', on);
         p.hidden = !on;
       });
+      hideFoldImage();   // don't carry a previous run's image across modes
       setStatus('');
     });
   });
@@ -86,13 +87,29 @@
     statSnr.textContent = String(p.snr);
   }
 
-  function showFoldImage(dataUrl) {
-    foldImage.src = dataUrl;
+  // The BLS parameters come from the full pipeline, not the image classifier,
+  // so blank them out for image-only runs rather than leaving stale numbers.
+  function resetBlsStats() {
+    statPeriod.textContent = '—';
+    statDepth.textContent = '—';
+    statDuration.textContent = '—';
+    statSnr.textContent = '—';
+  }
+
+  // The fold image overlays the phase chart. Track object URLs so they can be
+  // revoked (otherwise each upload leaks one).
+  let lastBlobUrl = null;
+  function showFoldImage(url, isBlob) {
+    if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+    if (isBlob) lastBlobUrl = url;
+    foldImage.src = url;
     foldImage.hidden = false;
     phaseCanvas.style.visibility = 'hidden';
   }
   function hideFoldImage() {
+    if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
     foldImage.hidden = true;
+    foldImage.removeAttribute('src');
     phaseCanvas.style.visibility = 'visible';
   }
 
@@ -116,7 +133,8 @@
         .then((res) => {
           if (!res.ok) throw new Error(res.error || 'Prediction failed');
           applyClassification(res, 'uploaded image');
-          showFoldImage(URL.createObjectURL(file));
+          resetBlsStats();   // image classifier yields no BLS parameters
+          showFoldImage(URL.createObjectURL(file), true);
           setStatus('Classified uploaded image.', 'ok');
         })
         .catch((err) => setStatus('Error: ' + err.message, 'error'))

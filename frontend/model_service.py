@@ -46,32 +46,40 @@ _load_error = None
 
 
 def _load():
-    """Lazily build the network and load weights. Safe to call repeatedly."""
+    """Lazily build the network and load weights. Safe to call repeatedly.
+
+    Guarded by _lock with a double-check so concurrent first-requests (the app
+    runs under threaded gunicorn workers) can't both build the model and load
+    the checkpoint at once.
+    """
     global _model, _transform, _load_error
     if _model is not None or _load_error is not None:
         return
-    try:
-        import torch  # noqa: F401
-        import torch.nn as nn
-        from torchvision import models, transforms
+    with _lock:
+        if _model is not None or _load_error is not None:
+            return
+        try:
+            import torch  # noqa: F401
+            import torch.nn as nn
+            from torchvision import models, transforms
 
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"Checkpoint not found: {MODEL_PATH}")
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(f"Checkpoint not found: {MODEL_PATH}")
 
-        net = models.resnet18(weights=None)
-        net.fc = nn.Linear(net.fc.in_features, len(CLASS_NAMES))
-        state = torch.load(MODEL_PATH, map_location="cpu")
-        net.load_state_dict(state)
-        net.eval()
+            net = models.resnet18(weights=None)
+            net.fc = nn.Linear(net.fc.in_features, len(CLASS_NAMES))
+            state = torch.load(MODEL_PATH, map_location="cpu")
+            net.load_state_dict(state)
+            net.eval()
 
-        _model = net
-        _transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=_MEAN, std=_STD),
-        ])
-    except Exception as exc:  # torch missing, bad checkpoint, etc.
-        _load_error = f"{type(exc).__name__}: {exc}"
+            _transform = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=_MEAN, std=_STD),
+            ])
+            _model = net  # set last so readers never see a model without a transform
+        except Exception as exc:  # torch missing, bad checkpoint, etc.
+            _load_error = f"{type(exc).__name__}: {exc}"
 
 
 def _missing_requirements():
@@ -117,7 +125,16 @@ def predict_image(file_bytes):
     import torch
     from PIL import Image
 
-    image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+    # Flatten any transparency onto white. The model was trained on white-
+    # background renders, so a plain convert("RGB") (which would turn
+    # transparent pixels black) must be avoided.
+    image = Image.open(io.BytesIO(file_bytes))
+    if image.mode in ("RGBA", "LA", "P"):
+        image = image.convert("RGBA")
+        background = Image.new("RGBA", image.size, (255, 255, 255, 255))
+        image = Image.alpha_composite(background, image)
+    image = image.convert("RGB")
+
     with _lock:
         tensor = _transform(image).unsqueeze(0)
         with torch.no_grad():

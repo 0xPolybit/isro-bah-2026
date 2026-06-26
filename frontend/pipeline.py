@@ -48,19 +48,25 @@ def _downsample(x, y, n=400):
 
 
 def _render_fold(fold_time, fold_flux):
-    """Render the folded curve exactly as the training notebook did."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    """Render the folded curve exactly as the training notebook did.
 
-    fig, ax = plt.subplots(figsize=(3, 3), dpi=85)
+    Uses matplotlib's object-oriented API (Figure + Agg canvas) rather than
+    pyplot. pyplot keeps a global figure registry and is not thread-safe, so
+    concurrent CSV/TIC requests on a threaded worker could corrupt state; a
+    standalone Figure has no shared state.
+    """
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+    fig = Figure(figsize=(3, 3), dpi=85)
+    FigureCanvasAgg(fig)
+    ax = fig.subplots()
     ax.scatter(fold_time, fold_flux, s=1, c="black", alpha=0.5)
     ax.axis("off")
-    plt.margins(0, 0)
+    ax.margins(0, 0)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0, facecolor="white")
-    plt.close(fig)
     return buf.getvalue()
 
 
@@ -80,21 +86,36 @@ def _process(lc, raw_time=None, raw_flux=None):
 
     # 1. Clean and flatten.
     lc = lc.remove_nans().remove_outliers(sigma_upper=3, sigma_lower=20)
-    flat = lc.flatten(window_length=101)
+    if lc.time.value.size < 150:
+        raise ValueError("Too few valid points after cleaning to analyse (need ~150+).")
 
-    t = np.asarray(flat.time.value, dtype=float)
-    f = np.asarray(flat.flux.value, dtype=float)
+    # Flatten, search and fold. Wrap the heavy lightkurve calls so opaque
+    # failures (short baseline, sparse sampling, periodogram errors) surface as
+    # a readable message instead of a stack trace.
+    try:
+        flat = lc.flatten(window_length=101)
 
-    # 2. Box Least Squares period search.
-    pg = flat.to_periodogram(method="bls", period=np.arange(0.5, 20, 0.01))
-    period = float(pg.period_at_max_power.value)
-    t0 = float(pg.transit_time_at_max_power.value)
-    duration = float(pg.duration_at_max_power.value)
-    depth = float(pg.depth_at_max_power.value)
+        t = np.asarray(flat.time.value, dtype=float)
+        f = np.asarray(flat.flux.value, dtype=float)
 
-    # 3. Phase-fold.
-    folded = flat.fold(period=pg.period_at_max_power,
-                       epoch_time=pg.transit_time_at_max_power)
+        # 2. Box Least Squares period search.
+        pg = flat.to_periodogram(method="bls", period=np.arange(0.5, 20, 0.01))
+        period = float(pg.period_at_max_power.value)
+        t0 = float(pg.transit_time_at_max_power.value)
+        duration = float(pg.duration_at_max_power.value)
+        depth = float(pg.depth_at_max_power.value)
+
+        # 3. Phase-fold.
+        folded = flat.fold(period=pg.period_at_max_power,
+                           epoch_time=pg.transit_time_at_max_power)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(
+            "Could not run the transit search on this light curve — it may be "
+            "too short, too sparsely sampled, or too noisy."
+        ) from exc
+
     fold_t = np.asarray(folded.time.value, dtype=float)
     fold_f = np.asarray(folded.flux.value, dtype=float)
 
@@ -171,11 +192,17 @@ def run_tic(tic_id):
     if not tic_id:
         raise ValueError("Enter a TIC ID.")
 
-    search = lk.search_lightcurve(f"TIC {tic_id}", mission="TESS", author="SPOC")
+    try:
+        search = lk.search_lightcurve(f"TIC {tic_id}", mission="TESS", author="SPOC")
+    except Exception as exc:
+        raise ValueError("Could not reach NASA MAST to search for that target.") from exc
     if len(search) == 0:
         raise ValueError(f"No TESS SPOC light curve found for TIC {tic_id}.")
 
-    lc = search[0].download()
+    try:
+        lc = search[0].download()
+    except Exception as exc:
+        raise ValueError(f"Failed to download data for TIC {tic_id} from MAST.") from exc
     if lc is None:
         raise ValueError(f"Failed to download data for TIC {tic_id}.")
     return _process(lc)

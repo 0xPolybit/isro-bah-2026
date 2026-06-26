@@ -16,6 +16,9 @@
   const bodyEl = document.getElementById('helpModalBody');
   const closeBtn = document.getElementById('helpModalClose');
 
+  // The button that opened a dialog, so focus can return to it on close (a11y).
+  let returnFocus = null;
+
   function openModal(title, body) {
     titleEl.textContent = title;
     bodyEl.textContent = body;
@@ -27,6 +30,7 @@
   function closeModal() {
     overlay.classList.remove('open');
     overlay.setAttribute('aria-hidden', 'true');
+    if (returnFocus) { returnFocus.focus(); returnFocus = null; }
   }
 
   // ---- Fullscreen section dialog ----
@@ -75,9 +79,11 @@
 
     fsOverlay.classList.remove('open');
     fsOverlay.setAttribute('aria-hidden', 'true');
+    fsDetail.innerHTML = '';  // drop detail content until the next open
 
     activeCard = null;
     placeholder = null;
+    if (returnFocus) { returnFocus.focus(); returnFocus = null; }
     requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
   }
 
@@ -102,7 +108,7 @@
     fsBtn.type = 'button';
     fsBtn.innerHTML = FS_ICON;
     fsBtn.setAttribute('aria-label', 'Expand: ' + title);
-    fsBtn.addEventListener('click', function () { openFullscreen(card, title); });
+    fsBtn.addEventListener('click', function () { returnFocus = fsBtn; openFullscreen(card, title); });
     head.appendChild(fsBtn);
 
     const helpBtn = document.createElement('button');
@@ -111,6 +117,7 @@
     helpBtn.textContent = '?';
     helpBtn.setAttribute('aria-label', 'What is this? ' + title);
     helpBtn.addEventListener('click', function () {
+      returnFocus = helpBtn;
       openModal(title, card.getAttribute('data-help'));
     });
     head.appendChild(helpBtn);
