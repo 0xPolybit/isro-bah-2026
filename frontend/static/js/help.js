@@ -1,8 +1,16 @@
 /*
- * Per-section help. Injects a "?" button into every card header and opens a
- * centred modal describing the data that card displays (from its data-help).
+ * Per-section controls. Every card header gets two buttons:
+ *   - a fullscreen/expand button (left) that moves the live card into a large
+ *     dialog so its charts/content can be viewed in detail, and
+ *   - a "?" help button (right) that opens a centred modal describing the data
+ *     the card displays (from its data-help attribute).
+ *
+ * The fullscreen view re-parents the actual card element (rather than cloning
+ * it) so the existing Chart.js instances keep rendering; on close it is moved
+ * back to its original position.
  */
 (function () {
+  // ---- Help modal ----
   const overlay = document.getElementById('helpModal');
   const titleEl = document.getElementById('helpModalTitle');
   const bodyEl = document.getElementById('helpModalBody');
@@ -21,29 +29,100 @@
     overlay.setAttribute('aria-hidden', 'true');
   }
 
+  // ---- Fullscreen section dialog ----
+  const fsOverlay = document.getElementById('fsOverlay');
+  const fsBody = document.getElementById('fsBody');
+  const fsTitle = document.getElementById('fsTitle');
+  const fsDesc = document.getElementById('fsDesc');
+  const fsClose = document.getElementById('fsClose');
+
+  let activeCard = null;
+  let placeholder = null;
+
+  function openFullscreen(card, title) {
+    if (activeCard) return;
+    activeCard = card;
+
+    // Remember the card's home position with a placeholder node.
+    placeholder = document.createComment('fs-placeholder');
+    card.parentNode.insertBefore(placeholder, card);
+
+    fsTitle.textContent = title;
+    fsDesc.textContent = card.getAttribute('data-help') || '';
+    fsBody.appendChild(card);
+    card.classList.add('in-fullscreen');
+
+    fsOverlay.classList.add('open');
+    fsOverlay.setAttribute('aria-hidden', 'false');
+    fsClose.focus();
+
+    // Nudge any responsive charts to recompute their size in the larger box.
+    requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+  }
+
+  function closeFullscreen() {
+    if (!activeCard) return;
+    activeCard.classList.remove('in-fullscreen');
+    placeholder.parentNode.insertBefore(activeCard, placeholder);
+    placeholder.remove();
+
+    fsOverlay.classList.remove('open');
+    fsOverlay.setAttribute('aria-hidden', 'true');
+
+    activeCard = null;
+    placeholder = null;
+    requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+  }
+
+  // Expand icon: four corner brackets (uses currentColor so hover state works).
+  const FS_ICON =
+    '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" ' +
+    'stroke="currentColor" stroke-width="1.6" stroke-linecap="square">' +
+    '<path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
+
+  // ---- Inject both buttons into every card with a description ----
   document.querySelectorAll('.card[data-help]').forEach(function (card) {
     const head = card.querySelector('.card-head');
     if (!head) return;
 
     const heading = head.querySelector('h2');
-    const title = heading ? heading.textContent.replace(/^\s*\d+\.\s*/, '').trim() : 'Details';
+    const title = heading
+      ? heading.textContent.replace(/^\s*\d+\.\s*/, '').trim()
+      : 'Details';
 
-    const btn = document.createElement('button');
-    btn.className = 'help-btn';
-    btn.type = 'button';
-    btn.textContent = '?';
-    btn.setAttribute('aria-label', 'What is this? ' + title);
-    btn.addEventListener('click', function () {
+    const fsBtn = document.createElement('button');
+    fsBtn.className = 'fs-btn';
+    fsBtn.type = 'button';
+    fsBtn.innerHTML = FS_ICON;
+    fsBtn.setAttribute('aria-label', 'Expand: ' + title);
+    fsBtn.addEventListener('click', function () { openFullscreen(card, title); });
+    head.appendChild(fsBtn);
+
+    const helpBtn = document.createElement('button');
+    helpBtn.className = 'help-btn';
+    helpBtn.type = 'button';
+    helpBtn.textContent = '?';
+    helpBtn.setAttribute('aria-label', 'What is this? ' + title);
+    helpBtn.addEventListener('click', function () {
       openModal(title, card.getAttribute('data-help'));
     });
-    head.appendChild(btn);
+    head.appendChild(helpBtn);
   });
 
+  // ---- Wiring ----
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', function (e) {
     if (e.target === overlay) closeModal();
   });
+
+  fsClose.addEventListener('click', closeFullscreen);
+  fsOverlay.addEventListener('click', function (e) {
+    if (e.target === fsOverlay) closeFullscreen();
+  });
+
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+    if (e.key !== 'Escape') return;
+    if (overlay.classList.contains('open')) closeModal();
+    else if (fsOverlay.classList.contains('open')) closeFullscreen();
   });
 })();

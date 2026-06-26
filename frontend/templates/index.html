@@ -238,6 +238,20 @@
     </div>
   </div>
 
+  <!-- Fullscreen section dialog (the focused section is moved into here) -->
+  <div class="fs-overlay" id="fsOverlay" aria-hidden="true">
+    <div class="fs-shell" role="dialog" aria-modal="true" aria-labelledby="fsTitle">
+      <div class="fs-bar">
+        <div class="fs-bar-text">
+          <span class="fs-title" id="fsTitle"></span>
+          <span class="fs-desc" id="fsDesc"></span>
+        </div>
+        <button class="fs-close" id="fsClose" aria-label="Close fullscreen">✕</button>
+      </div>
+      <div class="fs-body" id="fsBody"></div>
+    </div>
+  </div>
+
   <script>
     window.MODEL_STATUS = {{ model_status | tojson }};
     window.PIPELINE_AVAILABLE = {{ pipeline_available | tojson }};
