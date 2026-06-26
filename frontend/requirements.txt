@@ -1,3 +1,8 @@
+# Install CPU-only PyTorch wheels. On Linux (e.g. Render) the default PyPI
+# `torch` is the multi-GB CUDA build, which bloats the image and inflates
+# memory use; the CPU wheels below are far smaller and all this app needs.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 Flask
 Pillow
 
@@ -6,17 +11,13 @@ Pillow
 # On Windows, gunicorn does not run; use `python app.py` or `waitress`.
 gunicorn
 
-# Inference dependencies for the TESSNet ResNet18 model.
-# For a CPU-only install, use the PyTorch CPU wheels:
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-torch
-torchvision
+# Inference dependencies for the TESSNet ResNet18 model (CPU build).
+torch==2.12.1+cpu
+torchvision==0.27.1+cpu
 
 # Full light-curve analysis pipeline (CSV + TIC ID input modes).
 # Optional: the image-upload mode works without these.
 # matplotlib runs fully headless here — the app forces the non-GUI "Agg"
-# backend (see pipeline.py), so no display/GUI toolkit is required and there is
-# no separate "headless" wheel to install. None of the other dependencies
-# (Pillow, torch, torchvision, lightkurve) ship a distinct headless variant.
+# backend (see pipeline.py), so no display/GUI toolkit is required.
 lightkurve
 matplotlib

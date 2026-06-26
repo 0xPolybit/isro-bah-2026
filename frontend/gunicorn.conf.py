@@ -10,8 +10,12 @@ For local Windows use `python app.py` (dev server) or `waitress-serve`.
 
 import os
 
-# Bind address — override with GUNICORN_BIND if needed.
-bind = os.environ.get("GUNICORN_BIND", "0.0.0.0:8000")
+# Bind address. Hosts like Render/Heroku inject the port to listen on via the
+# PORT env var; honour it so the platform can detect the open port.
+bind = (
+    os.environ.get("GUNICORN_BIND")
+    or "0.0.0.0:" + os.environ.get("PORT", "8000")
+)
 
 # Keep worker count low: each worker loads its own copy of the ResNet18 model
 # and the (heavy) lightkurve/torch stacks on first request.

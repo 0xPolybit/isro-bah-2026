@@ -23,13 +23,16 @@ import model_service
 
 
 def pipeline_available():
-    """True if the scientific stack needed for CSV/TIC analysis is importable."""
-    try:
-        import lightkurve  # noqa: F401
-        import matplotlib  # noqa: F401
-        return True
-    except Exception:
-        return False
+    """True if the scientific stack for CSV/TIC analysis is installed.
+
+    Uses find_spec so the index route never actually imports lightkurve or
+    matplotlib (importing matplotlib can trigger a slow font-cache build and a
+    significant memory spike — enough to OOM a small host on boot).
+    """
+    import importlib.util
+
+    return (importlib.util.find_spec("lightkurve") is not None
+            and importlib.util.find_spec("matplotlib") is not None)
 
 
 def _downsample(x, y, n=400):

@@ -74,17 +74,38 @@ def _load():
         _load_error = f"{type(exc).__name__}: {exc}"
 
 
+def _missing_requirements():
+    """Names of anything needed for inference that isn't available — no imports."""
+    import importlib.util
+
+    missing = []
+    if importlib.util.find_spec("torch") is None:
+        missing.append("torch")
+    if importlib.util.find_spec("torchvision") is None:
+        missing.append("torchvision")
+    if not os.path.exists(MODEL_PATH):
+        missing.append("model weights")
+    return missing
+
+
 def model_status():
-    """Return a small dict describing whether the model is ready."""
-    _load()
+    """Report readiness WITHOUT loading the model.
+
+    The actual (heavy) model load is deferred to the first call to
+    predict_image(). This keeps the index route cheap so a memory- or
+    time-constrained host (e.g. Render) doesn't kill the worker on boot.
+    """
+    classes = [{"name": n, "label": FRIENDLY.get(n, n)} for n in CLASS_NAMES]
+
     if _model is not None:
-        return {
-            "ready": True,
-            "classes": [
-                {"name": n, "label": FRIENDLY.get(n, n)} for n in CLASS_NAMES
-            ],
-        }
-    return {"ready": False, "error": _load_error}
+        return {"ready": True, "classes": classes}
+    if _load_error is not None:
+        return {"ready": False, "error": _load_error, "classes": classes}
+
+    missing = _missing_requirements()
+    if missing:
+        return {"ready": False, "error": "Missing: " + ", ".join(missing), "classes": classes}
+    return {"ready": True, "classes": classes}
 
 
 def predict_image(file_bytes):

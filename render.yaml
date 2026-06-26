@@ -1,0 +1,16 @@
+# Render Blueprint for the ISRO BAH 2026 dashboard.
+# The Flask app lives in frontend/, so build and run from there.
+services:
+  - type: web
+    name: isro-bah-2026
+    runtime: python
+    rootDir: frontend
+    plan: standard          # torch + lightkurve need more RAM than the free tier
+    buildCommand: pip install -r requirements.txt
+    # Use the tuned gunicorn config: binds to $PORT, 120s timeout for the
+    # first (heavy) model load / BLS search / MAST download.
+    startCommand: gunicorn -c gunicorn.conf.py app:app
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
