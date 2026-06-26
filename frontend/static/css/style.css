@@ -664,10 +664,26 @@ h1, h2, h3 {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+  gap: 18px;
   padding: 16px 18px 18px;
 }
 
-/* The focused card fills the dialog; its own header is hidden (the fs-bar
+/* Left: the enlarged live section. Right: extended reference content. */
+.fs-stage { flex: 1 1 58%; min-width: 0; display: flex; }
+.fs-detail {
+  flex: 1 1 42%;
+  min-width: 0;
+  max-width: 460px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.fs-detail[hidden] { display: none; }
+.fs-detail::-webkit-scrollbar { width: 8px; }
+.fs-detail::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--surface); }
+
+/* The focused card fills the stage; its own header is hidden (the fs-bar
    already shows the title + description), and its expand button is suppressed. */
 .card.in-fullscreen {
   flex: 1 1 auto;
@@ -680,6 +696,74 @@ h1, h2, h3 {
   animation: none;
 }
 .card.in-fullscreen .card-head { display: none; }
+
+/* ---- Detail panel content ---- */
+.fs-detail h4 {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 18px 0 7px;
+}
+.fs-detail h4:first-child { margin-top: 0; }
+.fs-detail p {
+  margin: 0 0 9px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.fs-detail ul { list-style: none; margin: 0 0 9px; padding: 0; }
+.fs-detail li {
+  position: relative;
+  padding-left: 15px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.fs-detail li::before {
+  content: '▹';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+.fs-detail strong { color: var(--text); font-weight: 500; }
+.fs-detail em { color: var(--text-muted); font-style: italic; }
+
+/* ---- Detailed (expanded) flowchart ---- */
+.detail-flow { display: flex; flex-direction: column; }
+.dflow-step { border: 1px solid var(--border); background: var(--bg); padding: 9px 11px; }
+.dflow-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.dflow-num {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--bg);
+  background: var(--accent);
+}
+.dflow-step ul { margin: 0; }
+.dflow-step li { margin-bottom: 4px; font-size: 11.5px; color: var(--text-muted); }
+.dflow-step li::before { content: '·'; }
+.dflow-arrow { text-align: center; color: var(--text-muted); font-size: 14px; padding: 3px 0; }
+
+@media (max-width: 900px) {
+  .fs-body { flex-direction: column; overflow-y: auto; }
+  .fs-stage { flex: 0 0 auto; min-height: 280px; }
+  .fs-detail { flex: 0 0 auto; max-width: none; overflow: visible; }
+}
 
 /* ---------- Motion ---------- */
 @keyframes pulse {

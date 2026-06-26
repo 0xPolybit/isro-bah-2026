@@ -31,7 +31,8 @@
 
   // ---- Fullscreen section dialog ----
   const fsOverlay = document.getElementById('fsOverlay');
-  const fsBody = document.getElementById('fsBody');
+  const fsStage = document.getElementById('fsStage');
+  const fsDetail = document.getElementById('fsDetail');
   const fsTitle = document.getElementById('fsTitle');
   const fsDesc = document.getElementById('fsDesc');
   const fsClose = document.getElementById('fsClose');
@@ -49,8 +50,14 @@
 
     fsTitle.textContent = title;
     fsDesc.textContent = card.getAttribute('data-help') || '';
-    fsBody.appendChild(card);
+    fsStage.appendChild(card);
     card.classList.add('in-fullscreen');
+
+    // Populate the extended detail panel for this section, if any.
+    const detail = (window.SECTION_DETAILS || {})[card.dataset.section];
+    fsDetail.innerHTML = detail || '';
+    fsDetail.hidden = !detail;
+    fsDetail.scrollTop = 0;
 
     fsOverlay.classList.add('open');
     fsOverlay.setAttribute('aria-hidden', 'false');
