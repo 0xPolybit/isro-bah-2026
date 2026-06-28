@@ -497,6 +497,9 @@ h1, h2, h3 {
 .analyze-status.ok { color: var(--accent); }
 .analyze-status.error { color: #d98a8a; }
 
+.download-btn { margin-top: 8px; }
+.download-btn[hidden] { display: none; }
+
 .result-verdict.negative {
   color: var(--text-muted);
   border-color: var(--border);

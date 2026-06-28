@@ -24,6 +24,11 @@
   const foldImage = $('foldImage');
   const phaseCanvas = $('phaseChart');
   const statusEl = $('analyzeStatus');
+  const downloadBtn = $('downloadBtn');
+
+  // Last full-pipeline (CSV/TIC) result, kept so it can be downloaded.
+  let lastResult = null;
+  let lastSource = null;
 
   // ---- Tab switching ----
   const tabs = document.querySelectorAll('.analyze-tab');
@@ -126,6 +131,7 @@
       const file = imageInput.files && imageInput.files[0];
       if (!file) return;
       imageLabel.textContent = 'Analyzing…';
+      downloadBtn.hidden = true;   // image classification has no data to download
       setStatus(file.name);
       const form = new FormData();
       form.append('image', file);
@@ -153,8 +159,53 @@
     if (res.params) applyParams(res.params);
     if (res.image) showFoldImage(res.image);
     applyClassification(res.classification, sourceLabel);
+    lastResult = res;
+    lastSource = sourceLabel;
+    downloadBtn.hidden = false;   // results are now available to download
     setStatus('Analyzed ' + res.n_points + ' cadences.', 'ok');
   }
+
+  // ---- Download the analysis output as JSON ----
+  function slugify(s) {
+    return (s || 'result').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'result';
+  }
+
+  function buildPayload(res, source) {
+    var cls = res.classification;
+    return {
+      tool: 'ISRO BAH 2026 — TESSNet exoplanet transit detection',
+      source: source,
+      generated_at: new Date().toISOString(),
+      n_points_analyzed: res.n_points,
+      parameters: res.params,
+      classification: (cls && cls.ok !== false) ? {
+        predicted: cls.predicted,
+        predicted_label: cls.predicted_label,
+        confidence: cls.confidence,
+        transit_detected: cls.transit_detected,
+        probabilities: cls.probabilities,
+      } : null,
+      series_note: 'Time series are downsampled for display; parameters and '
+        + 'classification are computed on the full-resolution light curve.',
+      series: res.series,
+    };
+  }
+
+  function downloadResult() {
+    if (!lastResult) return;
+    var json = JSON.stringify(buildPayload(lastResult, lastSource), null, 2);
+    var url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'tessnet-' + slugify(lastSource) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  downloadBtn.addEventListener('click', downloadResult);
 
   // ---- CSV + TIC modes (require the scientific pipeline) ----
   if (pipelineOK) {
@@ -164,6 +215,7 @@
       const file = csvInput.files && csvInput.files[0];
       if (!file) return;
       csvLabel.textContent = 'Analyzing…';
+      downloadBtn.hidden = true;
       setStatus('Processing ' + file.name + ' (folding + BLS)…');
       const form = new FormData();
       form.append('file', file);
@@ -180,6 +232,7 @@
       if (!id) { setStatus('Enter a TIC ID.', 'error'); return; }
       ticBtn.textContent = '…';
       ticBtn.disabled = true;
+      downloadBtn.hidden = true;
       setStatus('Downloading TIC ' + id + ' from MAST…');
       const form = new FormData();
       form.append('tic_id', id);
