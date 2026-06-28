@@ -500,6 +500,71 @@ h1, h2, h3 {
 .download-btn { margin-top: 8px; }
 .download-btn[hidden] { display: none; }
 
+/* ---------- Batch progress + results ---------- */
+.batch-progress { margin-top: 10px; }
+.batch-progress[hidden] { display: none; }
+.batch-progress-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.batch-bar { height: 4px; background: var(--surface-2); overflow: hidden; }
+.batch-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.3s var(--ease);
+}
+
+.batch-results {
+  margin-top: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.batch-results[hidden] { display: none; }
+.batch-results::-webkit-scrollbar { width: 8px; }
+.batch-results::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--surface); }
+
+.batch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.18s var(--ease);
+}
+.batch-row:last-child { border-bottom: 0; }
+.batch-row:hover { background: var(--bg); }
+.batch-row[disabled] { cursor: default; }
+.batch-row .br-icon { flex: 0 0 12px; color: var(--accent); text-align: center; }
+.batch-row .br-icon.err { color: #d98a8a; }
+.batch-row.failed { cursor: default; }
+.batch-row .br-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.batch-row .br-meta { flex: 0 0 auto; color: var(--text-muted); }
+.batch-row .br-conf { flex: 0 0 34px; text-align: right; color: var(--accent); }
+
 .result-verdict.negative {
   color: var(--text-muted);
   border-color: var(--border);

@@ -1,10 +1,12 @@
 /*
  * Drives the three input modes in the Detection Result panel and pushes the
- * results back onto the dashboard:
- *   - Image: upload a phase-folded PNG -> /predict (classification only).
- *   - CSV:   upload time/flux data    -> /analyze/csv (full pipeline).
- *   - TIC:   enter a TESS TIC ID       -> /analyze/tic (full pipeline).
- * CSV and TIC repopulate every panel via window.Dashboard.applySeries().
+ * results back onto the dashboard. Each mode accepts a BATCH of inputs:
+ *   - Image: one or more phase-folded PNGs -> /predict (classification only).
+ *   - CSV:   one or more time/flux files   -> /analyze/csv (full pipeline).
+ *   - TIC:   one or more TESS TIC IDs       -> /analyze/tic (full pipeline).
+ * Items are processed sequentially with a progress bar; the dashboard updates
+ * live as each finishes, every result is listed (click to re-display), and all
+ * outputs can be downloaded together as a single JSON file.
  */
 (function () {
   const status = window.MODEL_STATUS || { ready: false };
@@ -25,10 +27,15 @@
   const phaseCanvas = $('phaseChart');
   const statusEl = $('analyzeStatus');
   const downloadBtn = $('downloadBtn');
+  const batchProgress = $('batchProgress');
+  const batchProgressLabel = $('batchProgressLabel');
+  const batchProgressCount = $('batchProgressCount');
+  const batchBar = $('batchBar');
+  const batchResultsEl = $('batchResults');
 
-  // Last full-pipeline (CSV/TIC) result, kept so it can be downloaded.
-  let lastResult = null;
-  let lastSource = null;
+  // Results of the most recent (batch) run: [{ source, ok, result?, error? }].
+  let batchResults = [];
+  let running = false;
 
   // ---- Tab switching ----
   const tabs = document.querySelectorAll('.analyze-tab');
@@ -123,28 +130,204 @@
     return fetch(url, { method: 'POST', body: body }).then((r) => r.json());
   }
 
-  // ---- Image mode (classification only) ----
+  // ---- Progress bar ----
+  function showProgress(total) {
+    batchBar.style.width = '0%';
+    batchProgressCount.textContent = '0 / ' + total;
+    batchProgressLabel.textContent = total > 1 ? 'Processing batch' : 'Processing';
+    batchProgress.hidden = false;
+  }
+  function setProgress(done, total) {
+    batchBar.style.width = Math.round((done / total) * 100) + '%';
+    batchProgressCount.textContent = done + ' / ' + total;
+  }
+
+  // ---- Result helpers ----
+  // A pipeline result carries `params`; an image result is the bare classification.
+  function isPipeline(res) { return !!(res && res.params); }
+  function classOf(res) { return isPipeline(res) ? res.classification : res; }
+
+  // Push one result onto the dashboard panels.
+  function display(res, sourceLabel) {
+    if (isPipeline(res)) {
+      if (res.series && window.Dashboard) window.Dashboard.applySeries(res.series);
+      if (res.params) applyParams(res.params);
+      if (res.image) showFoldImage(res.image);
+      applyClassification(res.classification, sourceLabel);
+    } else {
+      applyClassification(res, sourceLabel);
+      resetBlsStats();   // image classifier yields no BLS parameters
+    }
+  }
+
+  function reDisplay(index) {
+    const entry = batchResults[index];
+    if (!entry || !entry.ok) return;
+    display(entry.result, entry.source);
+    setStatus('Showing ' + entry.source, 'ok');
+  }
+
+  // ---- Per-item results list (each row re-displays its result on click) ----
+  function clearResults() { batchResultsEl.innerHTML = ''; batchResultsEl.hidden = true; }
+
+  function addResultRow(entry, index) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'batch-row' + (entry.ok ? '' : ' failed');
+    const name = document.createElement('span');
+    name.className = 'br-name';
+    name.textContent = entry.source;
+
+    if (entry.ok) {
+      const cls = classOf(entry.result);
+      const detected = !!(cls && cls.transit_detected);
+      const conf = cls && typeof cls.confidence === 'number' ? cls.confidence.toFixed(2) : '—';
+      const meta = isPipeline(entry.result) ? (entry.result.params.period_days + ' d') : 'image';
+      row.innerHTML = '<span class="br-icon">' + (detected ? '✓' : '✕') + '</span>';
+      row.appendChild(name);
+      row.insertAdjacentHTML('beforeend',
+        '<span class="br-meta">' + meta + '</span><span class="br-conf">' + conf + '</span>');
+      row.title = 'Show ' + entry.source;
+      row.addEventListener('click', function () { reDisplay(index); });
+    } else {
+      row.innerHTML = '<span class="br-icon err">!</span>';
+      row.appendChild(name);
+      row.insertAdjacentHTML('beforeend', '<span class="br-meta">failed</span>');
+      row.title = entry.error || 'Failed';
+    }
+    batchResultsEl.appendChild(row);
+    batchResultsEl.hidden = false;
+  }
+
+  // ---- POST one item ----
+  function runOne(item) {
+    const form = new FormData();
+    if (item.kind === 'image') { form.append('image', item.file); return post('/predict', form); }
+    if (item.kind === 'csv') { form.append('file', item.file); return post('/analyze/csv', form); }
+    form.append('tic_id', item.tic); return post('/analyze/tic', form);
+  }
+
+  // ---- Sequential batch runner ----
+  function runBatch(items) {
+    if (running) return Promise.resolve();
+    batchResults = [];
+    clearResults();
+    downloadBtn.hidden = true;
+    if (!items.length) { setStatus('Nothing to process.', 'error'); return Promise.resolve(); }
+    running = true;
+    showProgress(items.length);
+
+    let i = 0, failed = 0;
+
+    function finish() {
+      running = false;
+      const ok = items.length - failed;
+      if (batchResults.some((e) => e.ok)) downloadBtn.hidden = false;
+      downloadBtn.textContent = items.length > 1
+        ? '↓ Download All Results (JSON)'
+        : '↓ Download Results (JSON)';
+      setStatus('Done — ' + ok + ' of ' + items.length + ' succeeded'
+        + (failed ? ', ' + failed + ' failed' : '') + '.',
+        failed ? (ok ? 'ok' : 'error') : 'ok');
+      return Promise.resolve();
+    }
+
+    function next() {
+      if (i >= items.length) return finish();
+      const item = items[i];
+      setStatus('Processing ' + item.label + '  (' + (i + 1) + ' / ' + items.length + ')…');
+      return runOne(item).then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'Failed');
+        const entry = { source: item.label, ok: true, result: res };
+        batchResults.push(entry);
+        display(res, item.label);                                  // live update
+        if (item.kind === 'image') showFoldImage(URL.createObjectURL(item.file), true);
+        addResultRow(entry, batchResults.length - 1);
+      }).catch(function (err) {
+        failed++;
+        const entry = { source: item.label, ok: false, error: err.message };
+        batchResults.push(entry);
+        addResultRow(entry, batchResults.length - 1);
+      }).then(function () {
+        i += 1;
+        setProgress(i, items.length);
+        return next();
+      });
+    }
+    return next();
+  }
+
+  // ---- Download all results as one JSON ----
+  function slugify(s) {
+    return (s || 'result').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'result';
+  }
+
+  function itemPayload(entry) {
+    if (!entry.ok) return { source: entry.source, ok: false, error: entry.error };
+    const res = entry.result;
+    const cls = classOf(res);
+    const out = {
+      source: entry.source,
+      ok: true,
+      classification: cls ? {
+        predicted: cls.predicted,
+        predicted_label: cls.predicted_label,
+        confidence: cls.confidence,
+        transit_detected: cls.transit_detected,
+        probabilities: cls.probabilities,
+      } : null,
+    };
+    if (isPipeline(res)) {
+      out.n_points_analyzed = res.n_points;
+      out.parameters = res.params;
+      out.series = res.series;
+    }
+    return out;
+  }
+
+  function downloadResults() {
+    if (!batchResults.length) return;
+    const succeeded = batchResults.filter((e) => e.ok).length;
+    const payload = {
+      tool: 'ISRO BAH 2026 — TESSNet exoplanet transit detection',
+      generated_at: new Date().toISOString(),
+      count: batchResults.length,
+      succeeded: succeeded,
+      failed: batchResults.length - succeeded,
+      series_note: 'Time series are downsampled for display; parameters and '
+        + 'classification are computed on the full-resolution light curve.',
+      results: batchResults.map(itemPayload),
+    };
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (batchResults.length === 1
+      ? 'tessnet-' + slugify(batchResults[0].source)
+      : 'tessnet-batch-' + batchResults.length + '-items') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  downloadBtn.addEventListener('click', downloadResults);
+
+  // ---- Image mode (classification, one or more files) ----
   if (status.ready) {
     const imageInput = $('lcImage');
     const imageLabel = $('imageLabel');
-    imageInput.addEventListener('change', () => {
-      const file = imageInput.files && imageInput.files[0];
-      if (!file) return;
+    imageInput.addEventListener('change', function () {
+      if (!imageInput.files || !imageInput.files.length) return;
       imageLabel.textContent = 'Analyzing…';
-      downloadBtn.hidden = true;   // image classification has no data to download
-      setStatus(file.name);
-      const form = new FormData();
-      form.append('image', file);
-      post('/predict', form)
-        .then((res) => {
-          if (!res.ok) throw new Error(res.error || 'Prediction failed');
-          applyClassification(res, 'uploaded image');
-          resetBlsStats();   // image classifier yields no BLS parameters
-          showFoldImage(URL.createObjectURL(file), true);
-          setStatus('Classified uploaded image.', 'ok');
-        })
-        .catch((err) => setStatus('Error: ' + err.message, 'error'))
-        .finally(() => { imageLabel.textContent = 'Upload Phase-folded Image'; imageInput.value = ''; });
+      const items = Array.prototype.map.call(imageInput.files, function (f) {
+        return { kind: 'image', label: f.name, file: f };
+      });
+      runBatch(items).then(function () {
+        imageLabel.textContent = 'Upload Phase-folded Image(s)';
+        imageInput.value = '';
+      });
     });
   } else {
     $('imageBtn').classList.add('disabled');
@@ -152,101 +335,43 @@
     setStatus('Model unavailable: ' + (status.error || 'unknown'), 'error');
   }
 
-  // ---- Full-pipeline result handler (CSV + TIC) ----
-  function handlePipeline(res, sourceLabel) {
-    if (!res.ok) throw new Error(res.error || 'Analysis failed');
-    if (res.series && window.Dashboard) window.Dashboard.applySeries(res.series);
-    if (res.params) applyParams(res.params);
-    if (res.image) showFoldImage(res.image);
-    applyClassification(res.classification, sourceLabel);
-    lastResult = res;
-    lastSource = sourceLabel;
-    downloadBtn.hidden = false;   // results are now available to download
-    setStatus('Analyzed ' + res.n_points + ' cadences.', 'ok');
-  }
-
-  // ---- Download the analysis output as JSON ----
-  function slugify(s) {
-    return (s || 'result').toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'result';
-  }
-
-  function buildPayload(res, source) {
-    var cls = res.classification;
-    return {
-      tool: 'ISRO BAH 2026 — TESSNet exoplanet transit detection',
-      source: source,
-      generated_at: new Date().toISOString(),
-      n_points_analyzed: res.n_points,
-      parameters: res.params,
-      classification: (cls && cls.ok !== false) ? {
-        predicted: cls.predicted,
-        predicted_label: cls.predicted_label,
-        confidence: cls.confidence,
-        transit_detected: cls.transit_detected,
-        probabilities: cls.probabilities,
-      } : null,
-      series_note: 'Time series are downsampled for display; parameters and '
-        + 'classification are computed on the full-resolution light curve.',
-      series: res.series,
-    };
-  }
-
-  function downloadResult() {
-    if (!lastResult) return;
-    var json = JSON.stringify(buildPayload(lastResult, lastSource), null, 2);
-    var url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'tessnet-' + slugify(lastSource) + '.json';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  }
-
-  downloadBtn.addEventListener('click', downloadResult);
-
   // ---- CSV + TIC modes (require the scientific pipeline) ----
   if (pipelineOK) {
     const csvInput = $('lcCsv');
     const csvLabel = $('csvLabel');
-    csvInput.addEventListener('change', () => {
-      const file = csvInput.files && csvInput.files[0];
-      if (!file) return;
+    csvInput.addEventListener('change', function () {
+      if (!csvInput.files || !csvInput.files.length) return;
       csvLabel.textContent = 'Analyzing…';
-      downloadBtn.hidden = true;
-      setStatus('Processing ' + file.name + ' (folding + BLS)…');
-      const form = new FormData();
-      form.append('file', file);
-      post('/analyze/csv', form)
-        .then((res) => handlePipeline(res, 'CSV: ' + file.name))
-        .catch((err) => setStatus('Error: ' + err.message, 'error'))
-        .finally(() => { csvLabel.textContent = 'Upload Light-curve CSV'; csvInput.value = ''; });
+      const items = Array.prototype.map.call(csvInput.files, function (f) {
+        return { kind: 'csv', label: f.name, file: f };
+      });
+      runBatch(items).then(function () {
+        csvLabel.textContent = 'Upload Light-curve CSV(s)';
+        csvInput.value = '';
+      });
     });
 
     const ticInput = $('ticInput');
     const ticBtn = $('ticBtn');
-    const runTic = () => {
-      const id = ticInput.value.trim();
-      if (!id) { setStatus('Enter a TIC ID.', 'error'); return; }
+    const runTic = function () {
+      const ids = ticInput.value.split(/[\s,]+/)
+        .map(function (s) { return s.trim(); })
+        .filter(Boolean);
+      if (!ids.length) { setStatus('Enter one or more TIC IDs.', 'error'); return; }
       ticBtn.textContent = '…';
       ticBtn.disabled = true;
-      downloadBtn.hidden = true;
-      setStatus('Downloading TIC ' + id + ' from MAST…');
-      const form = new FormData();
-      form.append('tic_id', id);
-      post('/analyze/tic', form)
-        .then((res) => handlePipeline(res, 'TIC ' + id))
-        .catch((err) => setStatus('Error: ' + err.message, 'error'))
-        .finally(() => { ticBtn.textContent = 'Run'; ticBtn.disabled = false; });
+      const items = ids.map(function (id) { return { kind: 'tic', label: 'TIC ' + id, tic: id }; });
+      runBatch(items).then(function () {
+        ticBtn.textContent = 'Run';
+        ticBtn.disabled = false;
+      });
     };
     ticBtn.addEventListener('click', runTic);
-    ticInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runTic(); });
+    ticInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') runTic(); });
   } else {
-    ['csvBtn', 'ticBtn'].forEach((id) => { const el = $(id); if (el) el.classList.add('disabled'); });
+    ['csvBtn', 'ticBtn'].forEach(function (id) { const el = $(id); if (el) el.classList.add('disabled'); });
     document.querySelectorAll('[data-pane="csv"] .analyze-hint, [data-pane="tic"] .analyze-hint')
-      .forEach((el) => { el.textContent = 'Install lightkurve + matplotlib and restart to enable this mode.'; });
+      .forEach(function (el) { el.textContent = 'Install lightkurve + matplotlib and restart to enable this mode.'; });
     const csv = $('lcCsv'); if (csv) csv.disabled = true;
     const tic = $('ticInput'); if (tic) tic.disabled = true;
   }

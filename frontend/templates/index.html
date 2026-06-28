@@ -160,31 +160,44 @@
           <!-- Image mode -->
           <div class="analyze-pane active" data-pane="image">
             <label class="run-btn" id="imageBtn">
-              <input type="file" id="lcImage" accept="image/*" hidden />
-              <span id="imageLabel">Upload Phase-folded Image</span>
+              <input type="file" id="lcImage" accept="image/*" multiple hidden />
+              <span id="imageLabel">Upload Phase-folded Image(s)</span>
             </label>
-            <p class="analyze-hint">A rendered phase-folded light curve (black scatter on white) — what the model takes directly.</p>
+            <p class="analyze-hint">Rendered phase-folded light curves (black scatter on white). Select one or more — they're classified in a batch.</p>
           </div>
 
           <!-- CSV mode -->
           <div class="analyze-pane" data-pane="csv" hidden>
             <label class="run-btn" id="csvBtn">
-              <input type="file" id="lcCsv" accept=".csv,text/csv" hidden />
-              <span id="csvLabel">Upload Light-curve CSV</span>
+              <input type="file" id="lcCsv" accept=".csv,text/csv" multiple hidden />
+              <span id="csvLabel">Upload Light-curve CSV(s)</span>
             </label>
-            <p class="analyze-hint">Columns <code>time</code>, <code>flux</code>. The server folds, renders &amp; classifies, then repopulates every panel.</p>
+            <p class="analyze-hint">Columns <code>time</code>, <code>flux</code>. Select one or more files — each is folded, rendered &amp; classified in turn.</p>
           </div>
 
           <!-- TIC mode -->
           <div class="analyze-pane" data-pane="tic" hidden>
             <div class="tic-row">
-              <input type="text" id="ticInput" class="tic-input" placeholder="e.g. 25155310" inputmode="numeric" />
+              <input type="text" id="ticInput" class="tic-input" placeholder="e.g. 25155310, 307210830" />
               <button class="run-btn tic-go" id="ticBtn" type="button">Run</button>
             </div>
-            <p class="analyze-hint">Downloads the TESS (SPOC) light curve from NASA MAST — requires an internet connection.</p>
+            <p class="analyze-hint">One or more TESS TIC IDs (comma- or space-separated), downloaded from NASA MAST. Requires internet.</p>
           </div>
 
           <p class="analyze-status" id="analyzeStatus"></p>
+
+          <!-- Batch progress -->
+          <div class="batch-progress" id="batchProgress" hidden>
+            <div class="batch-progress-head">
+              <span id="batchProgressLabel">Processing</span>
+              <span id="batchProgressCount">0 / 0</span>
+            </div>
+            <div class="batch-bar"><i id="batchBar"></i></div>
+          </div>
+
+          <!-- Per-item results (click a row to re-display it) -->
+          <div class="batch-results" id="batchResults" hidden></div>
+
           <button class="run-btn download-btn" id="downloadBtn" type="button" hidden>↓ Download Results (JSON)</button>
         </div>
 
