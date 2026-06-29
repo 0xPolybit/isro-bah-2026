@@ -34,6 +34,7 @@
     <div class="topbar-right">
       <span class="status-pill"><span class="dot"></span> PIPELINE ACTIVE</span>
       <span class="meta">TIC&nbsp;ID&nbsp;2026-BAH&nbsp;·&nbsp;Sector&nbsp;47</span>
+      <button class="cta-btn" id="analyzeCta" type="button">▶ Analyze Your Data</button>
       <a class="paper-btn" href="{{ url_for('assets', filename='tessnet.pdf') }}" target="_blank" rel="noopener">Read Paper ↗</a>
     </div>
   </header>
@@ -151,7 +152,11 @@
         </div>
 
         <!-- Input controls: three ways to feed the model -->
-        <div class="analyze">
+        <div class="analyze" id="analyze">
+          <div class="analyze-head">
+            <span class="analyze-head-title">▶ Analyze a Light Curve</span>
+            <span class="analyze-head-hint">your data → live results</span>
+          </div>
           <div class="analyze-tabs" role="tablist">
             <button class="analyze-tab active" data-mode="image" type="button">Image</button>
             <button class="analyze-tab" data-mode="csv" type="button">CSV</button>
@@ -263,6 +268,23 @@
     </div>
   </div>
 
+  <!-- First-visit welcome / onboarding -->
+  <div class="modal-overlay" id="welcomeModal" aria-hidden="true">
+    <div class="modal welcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+      <button class="modal-close" id="welcomeClose" aria-label="Close">✕</button>
+      <h3 class="modal-title" id="welcomeTitle">Welcome to TESSNet</h3>
+      <p class="modal-body">You're viewing a <strong>live demo</strong> populated with
+        synthetic data. To analyze a real light curve, use the <strong>Analyze a Light
+        Curve</strong> panel — there are three ways in:</p>
+      <ul class="welcome-list">
+        <li><b>TIC ID</b> — type a TESS catalogue ID (e.g. <code>25155310</code>) and we fetch it from NASA MAST</li>
+        <li><b>CSV</b> — upload raw <code>time,flux</code> data</li>
+        <li><b>Image</b> — upload a phase-folded light-curve PNG</li>
+      </ul>
+      <button class="cta-btn welcome-go" id="welcomeGo" type="button">Show me where →</button>
+    </div>
+  </div>
+
   <!-- Fullscreen section dialog (the focused section is moved into here) -->
   <div class="fs-overlay" id="fsOverlay" aria-hidden="true">
     <div class="fs-shell" role="dialog" aria-modal="true" aria-labelledby="fsTitle">
@@ -295,5 +317,6 @@
   <script src="{{ url_for('static', filename='js/details.js') }}"></script>
   <script src="{{ url_for('static', filename='js/help.js') }}"></script>
   <script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
 </body>
 </html>
