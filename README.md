@@ -13,6 +13,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
 [![TESS](https://img.shields.io/badge/Data-NASA%20TESS-0B3D91?style=flat-square)](https://tess.mit.edu/)
 [![Chart.js](https://img.shields.io/badge/Charts-Chart.js-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
+[![Paper](https://img.shields.io/badge/Paper-PDF-success?style=flat-square)](paper/tessnet.pdf)
 
 </div>
 
@@ -28,7 +29,9 @@ An AI-based pipeline and dashboard for **automatically detecting exoplanet trans
 |---|---|
 | 📊 **Interactive Dashboard** | Visualises the full detection workflow across five panels: raw light curve, AI pipeline diagram, denoised signal, transit probability over time, and a phase-folded detection summary. |
 | 🔭 **Three Input Modes** | Feed the model a phase-folded **image**, a `time,flux` **CSV**, or a TESS **TIC ID**. CSV/TIC run the full pipeline server-side and repopulate *every* panel from the real data. |
+| 📦 **Batch & Export** | Submit many inputs at once (multiple files or a list of TIC IDs); they process sequentially with a live progress bar, and all results download together as one JSON file. |
 | 🤖 **Live Model Inference** | The trained ResNet18 classifier returns a verdict, confidence score, and per-class probability bars — updated in real time. |
+| 🧭 **Guided Onboarding** | A first-visit welcome and an "Analyze Your Data" call-to-action point newcomers to the input panel; the default view is a clearly-labelled **sample**, not stored data. |
 | 🔍 **Help & Detail Views** | Every section has a `?` explainer and a fullscreen ⤢ expand that opens an in-depth reference panel (and a detailed pipeline flowchart). |
 | 🎨 **Design System** | Single-screen dark layout, sharp corners, greyscale + electric blue (`#00e8f7`), subtle animations, and an icon splash/loading screen. Documented in [`DESIGN.md`](DESIGN.md). |
 
@@ -80,6 +83,10 @@ isro-bah-2026/
 │   ├── tessnet.ipynb            # Data preparation + ResNet18 training
 │   └── sample_data/             # Example light-curve samples
 │
+├── paper/
+│   ├── tessnet.tex             # LaTeX source of the project paper
+│   └── tessnet.pdf             # Compiled paper
+│
 └── frontend/
     ├── app.py                   # Flask application & API routes
     ├── model_service.py         # Model loading, lazy init & inference
@@ -89,7 +96,8 @@ isro-bah-2026/
     ├── tess_resnet18_model.pth  # Trained ResNet18 weights (~45 MB)
     │
     ├── assets/
-    │   └── icon.png             # App icon (favicon + loading splash)
+    │   ├── icon.png             # App icon (favicon + loading splash)
+    │   └── tessnet.pdf          # Paper, served via the "Read Paper" button
     │
     ├── templates/
     │   └── index.html           # Main dashboard template
@@ -102,7 +110,8 @@ isro-bah-2026/
             ├── charts.js        # Chart.js rendering + live-update API
             ├── help.js          # Help modal + fullscreen detail dialog
             ├── details.js       # Extended per-section reference content
-            ├── predict.js       # Image / CSV / TIC inputs → live results
+            ├── predict.js       # Inputs → batch processing → live results + JSON export
+            ├── onboarding.js    # First-visit welcome + "Analyze Your Data" CTA
             └── loader.js        # Splash / loading overlay
 ```
 
@@ -175,14 +184,19 @@ matplotlib) needs more RAM than the free tier, so the blueprint requests the
 
 ### Running an analysis
 
-The dashboard loads with a synthetic demo light curve so all panels are
-pre-populated. In the **Detection Result** panel, pick one of three input modes:
+The dashboard opens on a clearly-labelled **sample** view (synthetic data — nothing
+is stored between visits). In the **Detection Result** panel, pick one of three
+input modes:
 
 | Mode | Input | What happens |
 |------|-------|--------------|
 | **Image** | A phase-folded light-curve PNG (black scatter, white background) | Classified directly by ResNet18; updates the verdict, confidence and probability bars. |
 | **CSV** | A `time,flux` CSV | Server flattens → BLS period search → phase-folds → renders the model image → classifies, then **repopulates every panel** from the real data. |
 | **TIC ID** | A TESS TIC ID (e.g. `25155310`) | Downloads the SPOC light curve from NASA MAST and runs the full pipeline. Requires internet access. |
+
+Every mode accepts **multiple inputs** (several files, or a comma/space-separated
+list of TIC IDs): they process sequentially with a progress bar, the dashboard
+updates live per item, and all results export together as one JSON file.
 
 ### REST API
 
