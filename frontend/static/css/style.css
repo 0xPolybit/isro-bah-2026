@@ -639,6 +639,18 @@ h1, h2, h3 {
   background: transparent;
 }
 
+/* "Sample" tag marking the illustrative default result (removed after a run). */
+.sample-badge {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+}
+.sample-badge[hidden] { display: none; }
+
 .mini-chart-wrap {
   position: relative;
   flex: 1 1 auto;

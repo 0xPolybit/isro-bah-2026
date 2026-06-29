@@ -32,10 +32,18 @@
   const batchProgressCount = $('batchProgressCount');
   const batchBar = $('batchBar');
   const batchResultsEl = $('batchResults');
+  const targetMeta = $('targetMeta');
+  const sampleBadge = $('sampleBadge');
 
   // Results of the most recent (batch) run: [{ source, ok, result?, error? }].
   let batchResults = [];
   let running = false;
+
+  // Replace the illustrative "sample" placeholder once real results are shown.
+  function clearSampleState(sourceLabel) {
+    if (sampleBadge) sampleBadge.hidden = true;
+    if (targetMeta && sourceLabel) targetMeta.textContent = sourceLabel;
+  }
 
   // ---- Tab switching ----
   const tabs = document.querySelectorAll('.analyze-tab');
@@ -149,6 +157,7 @@
 
   // Push one result onto the dashboard panels.
   function display(res, sourceLabel) {
+    clearSampleState(sourceLabel);
     if (isPipeline(res)) {
       if (res.series && window.Dashboard) window.Dashboard.applySeries(res.series);
       if (res.params) applyParams(res.params);

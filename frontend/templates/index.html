@@ -33,7 +33,7 @@
     </div>
     <div class="topbar-right">
       <span class="status-pill"><span class="dot"></span> PIPELINE ACTIVE</span>
-      <span class="meta">TIC&nbsp;ID&nbsp;2026-BAH&nbsp;·&nbsp;Sector&nbsp;47</span>
+      <span class="meta" id="targetMeta">Sample view&nbsp;·&nbsp;no target analysed</span>
       <button class="cta-btn" id="analyzeCta" type="button">▶ Analyze Your Data</button>
       <a class="paper-btn" href="{{ url_for('assets', filename='tessnet.pdf') }}" target="_blank" rel="noopener">Read Paper ↗</a>
     </div>
@@ -130,7 +130,7 @@
         <p class="sub">Identified exoplanet candidate</p>
       </div>
       <div class="result">
-        <div class="result-verdict" id="verdict"><span class="check" id="verdictIcon">✓</span> <span id="verdictText">Transit Detected</span></div>
+        <div class="result-verdict" id="verdict"><span class="check" id="verdictIcon">✓</span> <span id="verdictText">Transit Detected</span> <span class="sample-badge" id="sampleBadge">Sample</span></div>
         <ul class="result-stats">
           <li><span>Confidence</span><b class="accent" id="statConfidence">0.97</b></li>
           <li><span>Period</span><b id="statPeriod">10.02 days</b></li>
